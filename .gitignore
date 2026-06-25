@@ -30,4 +30,3 @@ __pycache__/
 venv/
 env/
 .env
-alembic.ini

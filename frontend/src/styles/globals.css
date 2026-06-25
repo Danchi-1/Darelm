@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --void: #0A0A0F;
+  --surface: #111118;
+  --surface-raised: #16161F;
+  --border: #1E1E2E;
+  --ink: #E8E8F0;
+  --muted: #6B6B80;
+  --signal: #00E5A0;
+  --signal-dim: rgba(0, 229, 160, 0.08);
+  --error: #FF4D6D;
+  --warn: #FFB347;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--void);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-mono {
+  font-family: 'DM Mono', monospace;
+}
+
+/* Coordinate Grid Background */
+.coordinate-grid {
+  background-image: 
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center top;
+}
+
+/* Scan Line Animation */
+@keyframes scanLine {
+  0% {
+    top: 0;
+    opacity: 0.2;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: var(--signal);
+  opacity: 0.2;
+  animation: scanLine 600ms linear forwards;
+  pointer-events: none;
+}
+
+/* Typing Indicator Animation */
+@keyframes typingPulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.typing-dot {
+  animation: typingPulse 800ms ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 200ms;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 400ms;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

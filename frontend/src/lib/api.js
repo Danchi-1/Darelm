@@ -28,6 +28,10 @@ export async function apiRequest(endpoint, options = {}) {
     throw new Error(errorMessage);
   }
 
+  if (response.status === 204) {
+    return null;
+  }
+
   return response.json();
 }
 
@@ -59,17 +63,22 @@ export const api = {
   getCurrentUser: () => apiRequest('/users/me', { method: 'GET' }),
 
   // Sessions
-  getSessions: () => apiRequest('/sessions'),
-  getSession: (id) => apiRequest(`/sessions/${id}`),
-  createSession: (data) => apiRequest('/sessions', {
+  getSessions: () => apiRequest('/agents/01/sessions'),
+  getSession: (id) => apiRequest(`/agents/01/sessions/${id}`),
+  createSession: (data) => apiRequest('/agents/01/sessions', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  deleteSession: (id) => apiRequest(`/sessions/${id}`, { method: 'DELETE' }),
+  updateSession: (id, data) => apiRequest(`/agents/01/sessions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  deleteSession: (id) => apiRequest(`/agents/01/sessions/${id}`, { method: 'DELETE' }),
 
   // Datasets
   getDatasets: () => apiRequest('/datasets'),
   getDataset: (id) => apiRequest(`/datasets/${id}`),
+  getDatasetSchema: (id) => apiRequest(`/datasets/${id}/schema`),
   uploadDataset: (formData) => apiRequest('/datasets/upload', {
     method: 'POST',
     headers: {},
@@ -79,11 +88,29 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  testDatabase: (connectionString) => apiRequest('/datasets/test-connection', {
+    method: 'POST',
+    body: JSON.stringify({ connection_string: connectionString }),
+  }),
   deleteDataset: (id) => apiRequest(`/datasets/${id}`, { method: 'DELETE' }),
 
   // Agents
   queryAgent: (sessionId, query) => apiRequest(`/agents/${sessionId}/query`, {
     method: 'POST',
     body: JSON.stringify({ query }),
+  }),
+  autopilotAnalyze: (data) => apiRequest('/agents/02/analyze', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  autopilotExport: (sessionId, format) => apiRequest(`/agents/02/${sessionId}/export/${format}`, {
+    method: 'GET',
+  }),
+  mlExperiment: (data) => apiRequest('/agents/03/experiment', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  mlExport: (sessionId, format) => apiRequest(`/agents/03/${sessionId}/export/${format}`, {
+    method: 'GET',
   }),
 };

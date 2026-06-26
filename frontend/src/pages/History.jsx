@@ -3,11 +3,16 @@ import { Link } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Badge from '../components/ui/Badge';
 import Skeleton from '../components/ui/Skeleton';
+import Button from '../components/ui/Button';
+import { useToastStore } from '../store/toastStore';
 import { api } from '../lib/api';
 
 export default function History() {
   const [sessions, setSessions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingSession, setEditingSession] = useState(null);
+  const [editName, setEditName] = useState('');
+  const addToast = useToastStore((state) => state.addToast);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -23,6 +28,57 @@ export default function History() {
 
     fetchSessions();
   }, []);
+
+  const handleDelete = async (sessionId, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!confirm('Are you sure you want to delete this session?')) return;
+    
+    try {
+      await api.deleteSession(sessionId);
+      setSessions(sessions.filter(s => s.id !== sessionId));
+      addToast('Session deleted successfully', 'success');
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+      addToast('Failed to delete session: ' + error.message, 'error');
+    }
+  };
+
+  const handleStartRename = (session, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingSession(session.id);
+    setEditName(session.name);
+  };
+
+  const handleSaveRename = async (sessionId, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!editName.trim()) {
+      addToast('Session name cannot be empty', 'error');
+      return;
+    }
+    
+    try {
+      await api.updateSession(sessionId, { name: editName });
+      setSessions(sessions.map(s => s.id === sessionId ? { ...s, name: editName } : s));
+      setEditingSession(null);
+      setEditName('');
+      addToast('Session renamed successfully', 'success');
+    } catch (error) {
+      console.error('Failed to rename session:', error);
+      addToast('Failed to rename session: ' + error.message, 'error');
+    }
+  };
+
+  const handleCancelRename = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingSession(null);
+    setEditName('');
+  };
 
   return (
     <div className="flex min-h-screen bg-void">
@@ -50,13 +106,62 @@ export default function History() {
                 to={`/session/${session.id}`}
                 className="flex flex-col md:flex-row md:items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-border last:border-b-0 hover:bg-surface-raised transition-colors"
               >
-                <div className="mb-2 md:mb-0">
-                  <span className="text-ink text-xs md:text-sm">{session.name}</span>
+                <div className="mb-2 md:mb-0 flex-1">
+                  {editingSession === session.id ? (
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSaveRename(session.id, e)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-surface border border-border rounded-input px-2 py-1 text-sm text-ink focus:border-signal focus:outline-none"
+                      autoFocus
+                    />
+                  ) : (
+                    <span className="text-ink text-xs md:text-sm">{session.title}</span>
+                  )}
                   <Badge variant="neutral" className="ml-2 md:ml-3">
-                    {session.agent}
+                    Analyst
                   </Badge>
                 </div>
-                <span className="text-muted text-[10px] md:text-xs font-mono">{session.timestamp}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-muted text-[10px] md:text-xs font-mono">{new Date(session.created_at).toLocaleDateString()}</span>
+                  {editingSession === session.id ? (
+                    <>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={(e) => handleSaveRename(session.id, e)}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleCancelRename(e)}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleStartRename(session, e)}
+                      >
+                        Rename
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={(e) => handleDelete(session.id, e)}
+                      >
+                        Delete
+                      </Button>
+                    </>
+                  )}
+                </div>
               </Link>
             ))
           ) : (

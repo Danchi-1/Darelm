@@ -118,12 +118,12 @@ export default function Dashboard() {
                   className="flex flex-col md:flex-row md:items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-border last:border-b-0 hover:bg-surface-raised transition-colors"
                 >
                   <div className="mb-2 md:mb-0">
-                    <span className="text-ink text-xs md:text-sm">{session.name}</span>
+                    <span className="text-ink text-xs md:text-sm">{session.title}</span>
                     <Badge variant="neutral" className="ml-2 md:ml-3">
-                      {session.agent}
+                      Analyst
                     </Badge>
                   </div>
-                  <span className="text-muted text-[10px] md:text-xs font-mono">{session.timestamp}</span>
+                  <span className="text-muted text-[10px] md:text-xs font-mono">{new Date(session.created_at).toLocaleDateString()}</span>
                 </Link>
               ))
             ) : (

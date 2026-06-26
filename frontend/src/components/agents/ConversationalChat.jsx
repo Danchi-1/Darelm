@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import { Send, ChevronDown, ChevronRight, Loader2, CheckCircle, XCircle, Zap } from 'lucide-react';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import Skeleton from '../ui/Skeleton';
+import { useParams } from 'react-router-dom';
+import { useToastStore } from '../../store/toastStore';
 import { api } from '../../lib/api';
 
 export default function ConversationalChat() {
@@ -14,15 +16,50 @@ export default function ConversationalChat() {
   const [selectedDatasetId, setSelectedDatasetId] = useState(null);
   const [schema, setSchema] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [showThoughts, setShowThoughts] = useState(true);
   const messagesEndRef = useRef(null);
+  const addToast = useToastStore((state) => state.addToast);
+  const { id: sessionId } = useParams();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const data = await api.getDatasets();
         setDatasets(data);
+        
+        if (sessionId && sessionId !== 'new') {
+          // Load existing session
+          try {
+            const sessionData = await api.getSession(sessionId);
+            setSelectedDatasetId(sessionData.dataset_id || (data.length > 0 ? data[0].id : null));
+            
+            // Map backend messages to frontend format
+            const formattedMessages = sessionData.messages.map(msg => ({
+              role: msg.role,
+              content: msg.content,
+              thought: msg.thought,
+              toolCalls: msg.tool_calls
+            }));
+            
+            setMessages(formattedMessages.length > 0 ? formattedMessages : [
+              {
+                role: 'agent',
+                content: `Session resumed. How can I help you today?`,
+              }
+            ]);
+            setIsLoadingData(false);
+            return;
+          } catch (e) {
+            console.error("Failed to load session", e);
+            addToast("Failed to load session history", "error");
+          }
+        }
+        
         if (data.length > 0) {
           setSelectedDatasetId(data[0].id);
+          // Fetch schema for the first dataset
+          const schemaData = await api.getDatasetSchema(data[0].id);
+          setSchema(schemaData.columns || []);
           setMessages([
             {
               role: 'agent',
@@ -53,8 +90,49 @@ export default function ConversationalChat() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const fetchSchema = async () => {
+      if (selectedDatasetId) {
+        try {
+          const schemaData = await api.getDatasetSchema(selectedDatasetId);
+          setSchema(schemaData.columns || []);
+        } catch (error) {
+          console.error('Failed to fetch schema:', error);
+        }
+      }
+    };
+
+    fetchSchema();
+  }, [selectedDatasetId]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const ToolCallItem = ({ toolCall }) => {
+    const statusIcon = {
+      running: <Loader2 size={14} className="animate-spin text-signal" />,
+      completed: <CheckCircle size={14} className="text-signal" />,
+      failed: <XCircle size={14} className="text-danger" />,
+    }[toolCall.status] || <Zap size={14} className="text-muted" />;
+
+    return (
+      <div className="flex items-start gap-2 p-2 bg-surface-raised rounded border border-border">
+        <div className="mt-0.5">{statusIcon}</div>
+        <div className="flex-1 min-w-0">
+          <div className="font-mono text-xs text-ink truncate">{toolCall.name}</div>
+          {toolCall.status === 'running' && (
+            <div className="text-xs text-muted mt-1">Executing...</div>
+          )}
+          {toolCall.status === 'completed' && toolCall.result && (
+            <div className="text-xs text-muted mt-1 truncate">{toolCall.result}</div>
+          )}
+          {toolCall.status === 'failed' && toolCall.result && (
+            <div className="text-xs text-danger mt-1 truncate">{toolCall.result}</div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   useEffect(() => {
@@ -63,6 +141,11 @@ export default function ConversationalChat() {
 
   const handleSend = async () => {
     if (!input.trim()) return;
+    
+    if (!selectedDatasetId) {
+      addToast('Please select a dataset first', 'error');
+      return;
+    }
 
     const userMessage = { role: 'user', content: input };
     setMessages((prev) => [...prev, userMessage]);
@@ -84,7 +167,8 @@ export default function ConversationalChat() {
         },
         body: JSON.stringify({
           message: input,
-          dataset_id: selectedDatasetId
+          dataset_id: selectedDatasetId,
+          ...(sessionId && sessionId !== 'new' && { session_id: sessionId })
         })
       });
 
@@ -116,6 +200,7 @@ export default function ConversationalChat() {
                     newMessages[newMessages.length - 1].content = `Error: ${data.error}`;
                     return newMessages;
                   });
+                  addToast('Error from agent: ' + data.error, 'error');
                   break;
                 }
                 
@@ -130,6 +215,48 @@ export default function ConversationalChat() {
                     return newMessages;
                   });
                 }
+
+                if (data.thought) {
+                  setMessages((prev) => {
+                    const newMessages = [...prev];
+                    const lastIndex = newMessages.length - 1;
+                    newMessages[lastIndex] = {
+                      ...newMessages[lastIndex],
+                      thought: (newMessages[lastIndex].thought || '') + data.thought
+                    };
+                    return newMessages;
+                  });
+                }
+
+                if (data.tool_call) {
+                  setMessages((prev) => {
+                    const newMessages = [...prev];
+                    const lastIndex = newMessages.length - 1;
+                    newMessages[lastIndex] = {
+                      ...newMessages[lastIndex],
+                      toolCalls: [...(newMessages[lastIndex].toolCalls || []), data.tool_call]
+                    };
+                    return newMessages;
+                  });
+                }
+
+                if (data.tool_result) {
+                  setMessages((prev) => {
+                    const newMessages = [...prev];
+                    const lastIndex = newMessages.length - 1;
+                    const toolCalls = newMessages[lastIndex].toolCalls || [];
+                    const updatedToolCalls = toolCalls.map(tc => 
+                      tc.id === data.tool_result.id 
+                        ? { ...tc, result: data.tool_result.result, status: data.tool_result.status }
+                        : tc
+                    );
+                    newMessages[lastIndex] = {
+                      ...newMessages[lastIndex],
+                      toolCalls: updatedToolCalls
+                    };
+                    return newMessages;
+                  });
+                }
               } catch (e) {
                 console.error("Error parsing SSE JSON", e, line);
               }
@@ -140,6 +267,7 @@ export default function ConversationalChat() {
     } catch (error) {
       console.error("Chat error:", error);
       setIsTyping(false);
+      addToast('Failed to communicate with the server', 'error');
       setMessages((prev) => {
         const newMessages = [...prev];
         if (newMessages[newMessages.length - 1].content === '') {
@@ -155,6 +283,20 @@ export default function ConversationalChat() {
       {/* Left Panel - Data Context */}
       <div className="w-72 bg-surface border-r border-border flex flex-col">
         <div className="p-4 border-b border-border">
+          <h3 className="font-mono text-sm text-ink mb-3">Select dataset</h3>
+          <select
+            value={selectedDatasetId}
+            onChange={(e) => setSelectedDatasetId(e.target.value)}
+            className="w-full bg-surface border border-border rounded-card p-3 text-ink text-sm focus:border-signal focus:outline-none transition-colors mb-3"
+          >
+            <option value="">Select a dataset...</option>
+            {datasets.map((dataset) => (
+              <option key={dataset.id} value={dataset.id}>
+                {dataset.name}
+              </option>
+            ))}
+          </select>
+          
           <h3 className="font-mono text-sm text-ink mb-3">Connected datasets</h3>
           <div className="space-y-2">
             {datasets.map((dataset) => (
@@ -208,18 +350,64 @@ export default function ConversationalChat() {
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`mb-4 ${
+              className={`mb-6 ${
                 message.role === 'user' ? 'flex justify-end' : 'flex justify-start'
               }`}
             >
-              <div
-                className={`max-w-2xl ${
-                  message.role === 'user'
-                    ? 'bg-surface-raised rounded-card p-4'
-                    : 'text-ink whitespace-pre-wrap'
-                }`}
-              >
-                {message.content}
+              <div className={`max-w-2xl ${message.role === 'user' ? 'w-full' : 'w-full'}`}>
+                {message.role === 'agent' && (
+                  <>
+                    {/* Agent Thoughts Section */}
+                    {(message.thought || message.toolCalls) && (
+                      <div className="mb-3">
+                        <button
+                          onClick={() => setShowThoughts(!showThoughts)}
+                          className="flex items-center gap-2 text-xs text-muted font-mono mb-2 hover:text-ink transition-colors"
+                        >
+                          {showThoughts ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          <span>Agent reasoning</span>
+                          {message.toolCalls && message.toolCalls.length > 0 && (
+                            <Badge variant="neutral" className="text-[10px]">
+                              {message.toolCalls.length} tool{message.toolCalls.length > 1 ? 's' : ''}
+                            </Badge>
+                          )}
+                        </button>
+                        
+                        {showThoughts && (
+                          <div className="space-y-2">
+                            {/* Thoughts */}
+                            {message.thought && (
+                              <div className="bg-surface-dim border border-border rounded-card p-3">
+                                <div className="text-xs text-muted font-mono mb-1">Thinking</div>
+                                <div className="text-sm text-ink whitespace-pre-wrap">{message.thought}</div>
+                              </div>
+                            )}
+                            
+                            {/* Tool Calls */}
+                            {message.toolCalls && message.toolCalls.length > 0 && (
+                              <div className="space-y-1">
+                                {message.toolCalls.map((toolCall, tcIndex) => (
+                                  <ToolCallItem key={tcIndex} toolCall={toolCall} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Final Response */}
+                    <div className="text-ink whitespace-pre-wrap">
+                      {message.content}
+                    </div>
+                  </>
+                )}
+                
+                {message.role === 'user' && (
+                  <div className="bg-surface-raised rounded-card p-4">
+                    {message.content}
+                  </div>
+                )}
               </div>
             </div>
           ))}

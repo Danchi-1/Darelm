@@ -119,3 +119,33 @@ def delete_dataset(
     db.delete(dataset)
     db.commit()
     return None
+
+@router.get("/{dataset_id}/schema")
+def get_dataset_schema(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get the schema of a dataset.
+    """
+    dataset = db.query(Dataset).filter(
+        Dataset.id == dataset_id,
+        Dataset.user_id == current_user.id
+    ).first()
+    
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+        
+    from app.agents.tools import get_dataset_context
+    context = get_dataset_context(dataset_id, db)
+    
+    if "error" in context or "error_loading_schema" in context:
+        return {"columns": []}
+        
+    schema_dict = context.get("schema", {})
+    if not schema_dict:
+        return {"columns": []}
+        
+    columns = [{"name": col, "type": dtype} for col, dtype in schema_dict.items()]
+    return {"columns": columns}

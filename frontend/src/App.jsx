@@ -9,6 +9,7 @@ import Session from './pages/Session';
 import Datasets from './pages/Datasets';
 import History from './pages/History';
 import Settings from './pages/Settings';
+import ToastContainer from './components/ui/ToastContainer';
 import { useAuthStore } from './store/authStore';
 
 function ProtectedRoute({ children }) {
@@ -29,9 +30,10 @@ function App() {
     if (!isAuthenticated) return;
 
     let timeoutId;
-    const INACTIVITY_TIME = 30 * 60 * 1000; // 30 minutes
+    const INACTIVITY_TIME = 60 * 60 * 1000; // 1 hour
 
     const resetTimer = () => {
+      localStorage.setItem('lastActivity', Date.now().toString());
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         logout();
@@ -101,6 +103,7 @@ function App() {
         />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      <ToastContainer />
     </Router>
   );
 }

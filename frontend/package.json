@@ -16,7 +16,8 @@
     "zustand": "^4.5.2",
     "clsx": "^2.1.1",
     "lucide-react": "^0.379.0",
-    "@react-oauth/google": "^0.12.1"
+    "@react-oauth/google": "^0.12.1",
+    "jwt-decode": "^4.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

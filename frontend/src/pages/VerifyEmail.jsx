@@ -23,7 +23,10 @@ export default function VerifyEmail() {
 
       try {
         const response = await api.verifyEmail(token);
-        login(response.user, response.token);
+        const accessToken = response.access_token;
+        localStorage.setItem('token', accessToken);
+        const user = await api.getCurrentUser();
+        login(user, accessToken);
         setStatus('success');
         setMessage('Email verified successfully');
         setTimeout(() => navigate('/dashboard'), 2000);

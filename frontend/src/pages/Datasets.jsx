@@ -6,6 +6,7 @@ import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import Table from '../components/ui/Table';
 import Skeleton from '../components/ui/Skeleton';
+import { useToastStore } from '../store/toastStore';
 import { api } from '../lib/api';
 
 const columns = [
@@ -20,8 +21,12 @@ export default function Datasets() {
   const [datasets, setDatasets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDbModal, setShowDbModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedDataset, setSelectedDataset] = useState(null);
+  const [datasetSchema, setDatasetSchema] = useState([]);
   const [connectionString, setConnectionString] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const addToast = useToastStore((state) => state.addToast);
 
   const fetchDatasets = async () => {
     try {
@@ -50,6 +55,23 @@ export default function Datasets() {
   const processFile = async (file) => {
     if (!file) return;
     
+    // Validate file type
+    const validTypes = ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
+    const validExtensions = ['.csv', '.xlsx', '.xls'];
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+    
+    if (!validExtensions.includes(fileExtension)) {
+      addToast('Invalid file type. Please upload CSV or Excel files.', 'error');
+      return;
+    }
+    
+    // Validate file size (max 50MB)
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      addToast('File too large. Maximum size is 50MB.', 'error');
+      return;
+    }
+    
     const formData = new FormData();
     formData.append('file', file);
     
@@ -57,9 +79,10 @@ export default function Datasets() {
     try {
       await api.uploadDataset(formData);
       await fetchDatasets();
+      addToast('Dataset uploaded successfully', 'success');
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('Failed to upload dataset: ' + error.message);
+      addToast('Failed to upload dataset: ' + error.message, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -80,8 +103,17 @@ export default function Datasets() {
   };
 
   const handleTestConnection = async () => {
-    if (!connectionString) {
-      alert("Please enter a connection string");
+    if (!connectionString.trim()) {
+      addToast('Please enter a connection string', 'error');
+      return;
+    }
+
+    // Basic connection string validation
+    const validPrefixes = ['postgresql://', 'mysql://', 'mongodb://', 'sqlite://'];
+    const hasValidPrefix = validPrefixes.some(prefix => connectionString.toLowerCase().startsWith(prefix));
+    
+    if (!hasValidPrefix) {
+      addToast('Invalid connection string format. Must start with postgresql://, mysql://, mongodb://, or sqlite://', 'error');
       return;
     }
     
@@ -94,11 +126,39 @@ export default function Datasets() {
       setShowDbModal(false);
       setConnectionString('');
       await fetchDatasets();
+      addToast('Database connected successfully', 'success');
     } catch (error) {
       console.error('Connection failed:', error);
-      alert('Failed to connect: ' + error.message);
+      addToast('Failed to connect: ' + error.message, 'error');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleViewDataset = async (dataset) => {
+    setSelectedDataset(dataset);
+    setShowViewModal(true);
+    try {
+      const schemaData = await api.getDatasetSchema(dataset.id);
+      setDatasetSchema(schemaData.columns || []);
+    } catch (error) {
+      console.error('Failed to fetch schema:', error);
+      setDatasetSchema([]);
+    }
+  };
+
+  const handleDeleteDataset = async (datasetId, e) => {
+    e.stopPropagation();
+    
+    if (!confirm('Are you sure you want to delete this dataset?')) return;
+    
+    try {
+      await api.deleteDataset(datasetId);
+      await fetchDatasets();
+      addToast('Dataset deleted successfully', 'success');
+    } catch (error) {
+      console.error('Failed to delete dataset:', error);
+      addToast('Failed to delete dataset: ' + error.message, 'error');
     }
   };
 
@@ -107,17 +167,10 @@ export default function Datasets() {
     type: <Badge variant="active">{dataset.type}</Badge>,
     actions: (
       <div className="flex gap-2">
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="sm" onClick={() => handleViewDataset(dataset)}>
           View
         </Button>
-        <Button variant="danger" size="sm" onClick={async () => {
-          try {
-            await api.deleteDataset(dataset.id);
-            fetchDatasets();
-          } catch(e) {
-            console.error(e);
-          }
-        }}>
+        <Button variant="danger" size="sm" onClick={(e) => handleDeleteDataset(dataset.id, e)}>
           Delete
         </Button>
       </div>
@@ -208,6 +261,33 @@ export default function Datasets() {
               </Button>
               <Button variant="primary" size="md" onClick={handleTestConnection}>
                 Test connection
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Dataset View Modal */}
+        <Modal isOpen={showViewModal} onClose={() => setShowViewModal(false)}>
+          <h2 className="font-mono text-lg text-ink mb-4">{selectedDataset?.name}</h2>
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-mono text-sm text-ink mb-3">Schema</h3>
+              {datasetSchema.length > 0 ? (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {datasetSchema.map((column) => (
+                    <div key={column.name} className="flex justify-between items-center p-3 bg-surface-raised rounded-card">
+                      <span className="font-mono text-sm text-ink">{column.name}</span>
+                      <Badge variant="neutral">{column.type}</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted text-sm">No schema available</p>
+              )}
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button variant="ghost" size="md" onClick={() => setShowViewModal(false)}>
+                Close
               </Button>
             </div>
           </div>

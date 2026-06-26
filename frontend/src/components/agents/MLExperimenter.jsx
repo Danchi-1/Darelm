@@ -1,21 +1,60 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
+import { useToastStore } from '../../store/toastStore';
+import { api } from '../../lib/api';
 
 export default function MLExperimenter() {
   const [phase, setPhase] = useState('hypothesis');
   const [hypothesis, setHypothesis] = useState('');
-  const [selectedDataset, setSelectedDataset] = useState('');
+  const [selectedDatasetId, setSelectedDatasetId] = useState('');
+  const [datasets, setDatasets] = useState([]);
   const [progress, setProgress] = useState(0);
+  const [sessionId, setSessionId] = useState(null);
+  const [resultsData, setResultsData] = useState(null);
+  const addToast = useToastStore((state) => state.addToast);
 
-  const handleStart = () => {
-    if (!hypothesis.trim() || !selectedDataset) return;
+  useEffect(() => {
+    const fetchDatasets = async () => {
+      try {
+        const data = await api.getDatasets();
+        setDatasets(data);
+      } catch (error) {
+        console.error('Failed to fetch datasets:', error);
+      }
+    };
+
+    fetchDatasets();
+  }, []);
+
+  const handleStart = async () => {
+    if (!hypothesis.trim()) {
+      addToast('Please enter a hypothesis', 'error');
+      return;
+    }
+    
+    if (!selectedDatasetId) {
+      addToast('Please select a dataset', 'error');
+      return;
+    }
+    
     setPhase('preprocessing');
     
-    setTimeout(() => {
-      setPhase('model-selection');
-    }, 2000);
+    try {
+      const response = await api.mlExperiment({
+        hypothesis,
+        dataset_id: selectedDatasetId,
+      });
+      setSessionId(response.session_id);
+      setTimeout(() => {
+        setPhase('model-selection');
+      }, 2000);
+    } catch (error) {
+      console.error('Experiment failed:', error);
+      addToast('Failed to start experiment: ' + error.message, 'error');
+      setPhase('hypothesis');
+    }
   };
 
   const handleTrain = () => {
@@ -27,8 +66,29 @@ export default function MLExperimenter() {
       if (currentProgress >= 100) {
         clearInterval(interval);
         setPhase('results');
+        // Fetch results data
+        if (sessionId) {
+          api.getSession(sessionId).then(data => {
+            setResultsData(data);
+          }).catch(console.error);
+        }
       }
     }, 150);
+  };
+
+  const handleExport = async (format) => {
+    if (!sessionId) {
+      addToast('No session to export', 'error');
+      return;
+    }
+    try {
+      const url = await api.mlExport(sessionId, format);
+      window.open(url, '_blank');
+      addToast(`Exported as ${format.toUpperCase()}`, 'success');
+    } catch (error) {
+      console.error('Export failed:', error);
+      addToast('Failed to export: ' + error.message, 'error');
+    }
   };
 
   const renderPhase = () => {
@@ -53,19 +113,21 @@ export default function MLExperimenter() {
               <div>
                 <label className="block text-sm text-muted mb-2">Dataset</label>
                 <select
-                  value={selectedDataset}
-                  onChange={(e) => setSelectedDataset(e.target.value)}
+                  value={selectedDatasetId}
+                  onChange={(e) => setSelectedDatasetId(e.target.value)}
                   className="w-full bg-surface border border-border rounded-card p-4 text-ink focus:border-signal focus:outline-none transition-colors"
                 >
                   <option value="">Select a dataset...</option>
-                  <option value="customers">customers.csv</option>
-                  <option value="transactions">transactions.csv</option>
-                  <option value="products">products.csv</option>
+                  {datasets.map((dataset) => (
+                    <option key={dataset.id} value={dataset.id}>
+                      {dataset.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div className="flex justify-end">
-                <Button variant="primary" size="md" onClick={handleStart}>
+                <Button variant="primary" size="md" onClick={handleStart} disabled={!hypothesis.trim() || !selectedDatasetId}>
                   Start experiment
                 </Button>
               </div>
@@ -174,13 +236,13 @@ export default function MLExperimenter() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="font-mono text-2xl text-ink">Model Results</h2>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={() => handleExport('pdf')}>
                   Full report PDF
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={() => handleExport('csv')}>
                   Metrics CSV
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={() => handleExport('pkl')}>
                   Model (.pkl)
                 </Button>
               </div>

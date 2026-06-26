@@ -1,15 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
+import { useToastStore } from '../../store/toastStore';
+import { api } from '../../lib/api';
 
 const phases = ['goal', 'planning', 'execution', 'report'];
 
 export default function AutopilotFlow() {
   const [phase, setPhase] = useState('goal');
   const [goal, setGoal] = useState('');
+  const [selectedDatasetId, setSelectedDatasetId] = useState('');
+  const [datasets, setDatasets] = useState([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState([]);
+  const [sessionId, setSessionId] = useState(null);
+  const [reportData, setReportData] = useState(null);
+  const addToast = useToastStore((state) => state.addToast);
+
+  useEffect(() => {
+    const fetchDatasets = async () => {
+      try {
+        const data = await api.getDatasets();
+        setDatasets(data);
+      } catch (error) {
+        console.error('Failed to fetch datasets:', error);
+      }
+    };
+
+    fetchDatasets();
+  }, []);
 
   const steps = [
     'Analyze data structure and schema',
@@ -19,15 +39,32 @@ export default function AutopilotFlow() {
     'Compile final report',
   ];
 
-  const handleAnalyze = () => {
-    if (!goal.trim()) return;
+  const handleAnalyze = async () => {
+    if (!goal.trim()) {
+      addToast('Please enter a goal', 'error');
+      return;
+    }
+    
+    if (!selectedDatasetId) {
+      addToast('Please select a dataset', 'error');
+      return;
+    }
+    
     setPhase('planning');
     
-    // Simulate planning phase
-    setTimeout(() => {
+    try {
+      const response = await api.autopilotAnalyze({
+        goal,
+        dataset_id: selectedDatasetId,
+      });
+      setSessionId(response.session_id);
       setPhase('execution');
       executeSteps();
-    }, 2000);
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      addToast('Failed to start analysis: ' + error.message, 'error');
+      setPhase('goal');
+    }
   };
 
   const executeSteps = () => {
@@ -40,8 +77,29 @@ export default function AutopilotFlow() {
       } else {
         clearInterval(interval);
         setPhase('report');
+        // Fetch report data
+        if (sessionId) {
+          api.getSession(sessionId).then(data => {
+            setReportData(data);
+          }).catch(console.error);
+        }
       }
     }, 1500);
+  };
+
+  const handleExport = async (format) => {
+    if (!sessionId) {
+      addToast('No session to export', 'error');
+      return;
+    }
+    try {
+      const url = await api.autopilotExport(sessionId, format);
+      window.open(url, '_blank');
+      addToast(`Exported as ${format.toUpperCase()}`, 'success');
+    } catch (error) {
+      console.error('Export failed:', error);
+      addToast('Failed to export: ' + error.message, 'error');
+    }
   };
 
   const renderPhase = () => {
@@ -53,16 +111,39 @@ export default function AutopilotFlow() {
             <p className="text-muted mb-6">
               What do you want to analyze? Be as specific as possible.
             </p>
-            <textarea
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              placeholder="e.g., Analyze Q1 sales performance by region and identify top-performing products..."
-              className="w-full h-48 bg-surface border border-border rounded-card p-4 text-ink focus:border-signal focus:outline-none transition-colors resize-none"
-            />
-            <div className="mt-4 flex justify-end">
-              <Button variant="primary" size="md" onClick={handleAnalyze}>
-                Analyze
-              </Button>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-muted mb-2">Dataset</label>
+                <select
+                  value={selectedDatasetId}
+                  onChange={(e) => setSelectedDatasetId(e.target.value)}
+                  className="w-full bg-surface border border-border rounded-card p-4 text-ink focus:border-signal focus:outline-none transition-colors"
+                >
+                  <option value="">Select a dataset...</option>
+                  {datasets.map((dataset) => (
+                    <option key={dataset.id} value={dataset.id}>
+                      {dataset.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm text-muted mb-2">Goal</label>
+                <textarea
+                  value={goal}
+                  onChange={(e) => setGoal(e.target.value)}
+                  placeholder="e.g., Analyze Q1 sales performance by region and identify top-performing products..."
+                  className="w-full h-48 bg-surface border border-border rounded-card p-4 text-ink focus:border-signal focus:outline-none transition-colors resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <Button variant="primary" size="md" onClick={handleAnalyze} disabled={!goal.trim() || !selectedDatasetId}>
+                  Analyze
+                </Button>
+              </div>
             </div>
           </div>
         );
@@ -136,13 +217,13 @@ export default function AutopilotFlow() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="font-mono text-2xl text-ink">Analysis Report</h2>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={() => handleExport('pdf')}>
                   PDF
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={() => handleExport('csv')}>
                   CSV
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={() => handleExport('json')}>
                   JSON
                 </Button>
               </div>

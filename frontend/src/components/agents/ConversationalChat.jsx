@@ -2,32 +2,56 @@ import { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
-
-const datasets = [
-  { name: 'sales_q1_2024.csv', size: '2.4 MB' },
-  { name: 'customers.db', size: '156 MB' },
-];
-
-const schema = [
-  { name: 'id', type: 'INTEGER' },
-  { name: 'date', type: 'DATE' },
-  { name: 'revenue', type: 'FLOAT' },
-  { name: 'region', type: 'VARCHAR' },
-];
-
-const initialMessages = [
-  {
-    role: 'agent',
-    content: "I've connected to your datasets. You can ask questions about sales_q1_2024.csv and customers.db. What would you like to know?",
-  },
-];
+import Skeleton from '../ui/Skeleton';
+import { api } from '../../lib/api';
 
 export default function ConversationalChat() {
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showSchema, setShowSchema] = useState(false);
+  const [datasets, setDatasets] = useState([]);
+  const [selectedDatasetId, setSelectedDatasetId] = useState(null);
+  const [schema, setSchema] = useState([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = await api.getDatasets();
+        setDatasets(data);
+        if (data.length > 0) {
+          setSelectedDatasetId(data[0].id);
+          setMessages([
+            {
+              role: 'agent',
+              content: `I've connected to your datasets. You can ask questions about ${data.map(d => d.name).join(', ')}. What would you like to know?`,
+            },
+          ]);
+        } else {
+          setMessages([
+            {
+              role: 'agent',
+              content: "No datasets connected yet. Please upload a dataset to get started.",
+            },
+          ]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch datasets:', error);
+        setMessages([
+          {
+            role: 'agent',
+            content: "Failed to load datasets. Please try again later.",
+          },
+        ]);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -37,25 +61,93 @@ export default function ConversationalChat() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage = { role: 'user', content: input };
-    setMessages([...messages, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsTyping(true);
 
-    // Simulate agent response
-    setTimeout(() => {
-      setIsTyping(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'agent',
-          content: `Based on your data, here's what I found:\n\nTotal revenue for Q1 2024: $1,234,567\n\nThe top performing region was North America with 45% of total revenue.`,
+    // Add an empty agent message to stream into
+    setMessages((prev) => [...prev, { role: 'agent', content: '' }]);
+
+    try {
+      const token = localStorage.getItem('token');
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+      
+      const response = await fetch(`${API_BASE}/agents/01/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
         },
-      ]);
-    }, 1500);
+        body: JSON.stringify({
+          message: input,
+          dataset_id: selectedDatasetId
+        })
+      });
+
+      setIsTyping(false);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch from AI');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.error) {
+                  setMessages((prev) => {
+                    const newMessages = [...prev];
+                    newMessages[newMessages.length - 1].content = `Error: ${data.error}`;
+                    return newMessages;
+                  });
+                  break;
+                }
+                
+                if (data.content) {
+                  setMessages((prev) => {
+                    const newMessages = [...prev];
+                    const lastIndex = newMessages.length - 1;
+                    newMessages[lastIndex] = {
+                      ...newMessages[lastIndex],
+                      content: newMessages[lastIndex].content + data.content
+                    };
+                    return newMessages;
+                  });
+                }
+              } catch (e) {
+                console.error("Error parsing SSE JSON", e, line);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+      setIsTyping(false);
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        if (newMessages[newMessages.length - 1].content === '') {
+           newMessages[newMessages.length - 1].content = "Sorry, I encountered an error communicating with the server.";
+        }
+        return newMessages;
+      });
+    }
   };
 
   return (
@@ -66,9 +158,21 @@ export default function ConversationalChat() {
           <h3 className="font-mono text-sm text-ink mb-3">Connected datasets</h3>
           <div className="space-y-2">
             {datasets.map((dataset) => (
-              <div key={dataset.name} className="bg-surface-raised rounded-card p-3">
-                <span className="font-mono text-xs text-ink block">{dataset.name}</span>
-                <span className="text-xs text-muted">{dataset.size}</span>
+              <div 
+                key={dataset.id} 
+                onClick={() => setSelectedDatasetId(dataset.id)}
+                className={`rounded-card p-3 cursor-pointer transition-colors ${
+                  selectedDatasetId === dataset.id 
+                    ? 'bg-signal-dim border border-signal' 
+                    : 'bg-surface-raised border border-transparent hover:border-border'
+                }`}
+              >
+                <span className={`font-mono text-xs block ${selectedDatasetId === dataset.id ? 'text-signal' : 'text-ink'}`}>
+                  {dataset.name}
+                </span>
+                <span className="text-xs text-muted">
+                  {dataset.size_bytes ? `${Math.round(dataset.size_bytes/1024)} KB` : dataset.dataset_type}
+                </span>
               </div>
             ))}
           </div>
@@ -138,13 +242,15 @@ export default function ConversationalChat() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              onKeyDown={(e) => e.key === 'Enter' && !isTyping && handleSend()}
               placeholder="Ask a question about your data..."
-              className="flex-1 bg-surface border border-border rounded-input h-12 px-4 text-ink focus:border-signal focus:outline-none transition-colors"
+              disabled={isTyping}
+              className="flex-1 bg-surface border border-border rounded-input h-12 px-4 text-ink focus:border-signal focus:outline-none transition-colors disabled:opacity-50"
             />
             <button
               onClick={handleSend}
-              className="w-12 h-12 bg-surface border border-border rounded-btn flex items-center justify-center text-signal hover:border-signal transition-colors"
+              disabled={isTyping}
+              className="w-12 h-12 bg-surface border border-border rounded-btn flex items-center justify-center text-signal hover:border-signal transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send size={20} />
             </button>

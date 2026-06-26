@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useGoogleLogin } from '@react-oauth/google';
+import { GoogleLogin } from '@react-oauth/google';
+import { jwtDecode } from 'jwt-decode';
 import Button from '../components/ui/Button';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
@@ -8,34 +9,50 @@ import { useAuthStore } from '../store/authStore';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
     try {
       const response = await api.login({ email, password });
-      login(response.user, response.token);
+      const token = response.access_token;
+      localStorage.setItem('token', token);
+      const user = await api.getCurrentUser();
+      login(user, token);
       navigate('/dashboard');
     } catch (error) {
-      console.error('Login failed:', error);
+      setError(error.message);
     }
   };
 
-  const googleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        const response = await api.googleAuth(tokenResponse.credential);
-        login(response.user, response.token);
-        navigate('/dashboard');
-      } catch (error) {
-        console.error('Google login failed:', error);
-      }
-    },
-    onError: () => {
-      console.error('Google login failed');
-    },
-  });
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError(null);
+    try {
+      const response = await api.googleAuth(credentialResponse.credential);
+      const token = response.access_token;
+      localStorage.setItem('token', token);
+      
+      // Decode Google credential to get user info
+      const decoded = jwtDecode(credentialResponse.credential);
+      const user = {
+        email: decoded.email,
+        name: decoded.name,
+        picture: decoded.picture,
+      };
+      
+      login(user, token);
+      navigate('/dashboard');
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError('Google login failed');
+  };
 
   return (
     <div className="min-h-screen flex">
@@ -43,7 +60,9 @@ export default function Login() {
       <div className="hidden md:flex w-1/2 coordinate-grid relative">
         <div className="absolute inset-0 bg-void/90 flex items-center justify-center">
           <div className="text-center">
-            <h1 className="font-mono text-4xl text-ink mb-4">Darelm</h1>
+            <Link to="/" className="font-mono text-4xl text-ink mb-4 block hover:text-signal transition-colors cursor-pointer">
+              Darelm
+            </Link>
             <p className="text-muted text-sm">
               Qwen-powered data intelligence platform
             </p>
@@ -56,6 +75,12 @@ export default function Login() {
         <div className="w-full max-w-md">
           <h1 className="font-mono text-2xl text-ink mb-2">Welcome back</h1>
           <p className="text-muted text-sm mb-8">Sign in to your account</p>
+
+          {error && (
+            <div className="bg-error/10 border border-error/30 rounded-card p-4 mb-6">
+              <p className="text-error text-sm">{error}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -102,14 +127,16 @@ export default function Login() {
             </div>
           </div>
 
-          <Button
-            variant="ghost"
-            size="md"
-            className="w-full"
-            onClick={() => googleLogin()}
-          >
-            Continue with Google
-          </Button>
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              theme="outline"
+              size="large"
+              text="signin_with"
+              width="100%"
+            />
+          </div>
 
           <p className="text-center text-sm text-muted mt-8">
             Don't have an account?{' '}

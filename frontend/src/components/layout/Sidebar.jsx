@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Clock, Database, Settings } from 'lucide-react';
 import clsx from 'clsx';
+import { useAuthStore } from '../../store/authStore';
 
 const navItems = [
   { label: 'New session', path: '/dashboard', icon: Home },
@@ -9,15 +10,17 @@ const navItems = [
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
 
-export default function Sidebar({ userName = 'User' }) {
+export default function Sidebar() {
   const location = useLocation();
+  const user = useAuthStore((state) => state.user);
+  const userName = user?.name || user?.email?.split('@')[0] || 'User';
 
   return (
     <>
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-60 h-screen bg-surface border-r border-border flex-col fixed left-0 top-0">
         <div className="p-6 border-b border-border">
-          <Link to="/" className="font-mono text-xl text-ink mb-4 block hover:text-signal transition-colors">
+          <Link to="/" className="font-mono text-xl text-ink mb-4 block hover:text-signal transition-colors cursor-pointer">
             Darelm
           </Link>
           <div className="flex items-center gap-3">

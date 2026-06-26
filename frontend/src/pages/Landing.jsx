@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import TopNav from '../components/layout/TopNav';
 import Footer from '../components/layout/Footer';
+import { useAuthStore } from '../store/authStore';
 
 const agents = [
   {
@@ -43,6 +44,7 @@ const agents = [
 
 function AgentCard({ agent, index }) {
   const [showScanLine, setShowScanLine] = useState(false);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   return (
     <motion.div
@@ -66,7 +68,7 @@ function AgentCard({ agent, index }) {
           </li>
         ))}
       </ul>
-      <Link to="/register" className="text-signal text-sm font-medium hover:opacity-80 transition-opacity">
+      <Link to={isAuthenticated ? "/dashboard" : "/register"} className="text-signal text-sm font-medium hover:opacity-80 transition-opacity">
         Try this agent →
       </Link>
     </motion.div>
@@ -75,6 +77,7 @@ function AgentCard({ agent, index }) {
 
 export default function Landing() {
   const [gridOffset, setGridOffset] = useState(0);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -130,16 +133,18 @@ export default function Landing() {
               transition={{ duration: 0.4, delay: 0.24, ease: 'easeOut' }}
               className="flex gap-4"
             >
-              <Link to="/register">
+              <Link to={isAuthenticated ? "/dashboard" : "/register"}>
                 <Button variant="primary" size="lg">
                   Start analyzing
                 </Button>
               </Link>
-              <Link to="/how-it-works">
+              <button
+                onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+              >
                 <Button variant="ghost" size="lg">
                   See how it works
                 </Button>
-              </Link>
+              </button>
             </motion.div>
             <motion.div
               initial={{ opacity: 0 }}

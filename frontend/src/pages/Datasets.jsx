@@ -1,17 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
 import Table from '../components/ui/Table';
-
-const datasets = [
-  { id: 1, name: 'sales_q1_2024.csv', type: 'CSV', size: '2.4 MB', date: '2024-01-15' },
-  { id: 2, name: 'customers.db', type: 'PostgreSQL', size: '156 MB', date: '2024-01-10' },
-  { id: 3, name: 'transactions.xlsx', type: 'Excel', size: '8.7 MB', date: '2024-01-08' },
-  { id: 4, name: 'products.csv', type: 'CSV', size: '1.2 MB', date: '2024-01-05' },
-];
+import Skeleton from '../components/ui/Skeleton';
+import { api } from '../lib/api';
 
 const columns = [
   { key: 'name', label: 'Name' },
@@ -22,9 +17,26 @@ const columns = [
 ];
 
 export default function Datasets() {
+  const [datasets, setDatasets] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showDbModal, setShowDbModal] = useState(false);
   const [connectionString, setConnectionString] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+
+  const fetchDatasets = async () => {
+    try {
+      const data = await api.getDatasets();
+      setDatasets(data);
+    } catch (error) {
+      console.error('Failed to fetch datasets:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDatasets();
+  }, []);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -35,19 +47,59 @@ export default function Datasets() {
     setIsDragging(false);
   };
 
+  const processFile = async (file) => {
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    setIsLoading(true);
+    try {
+      await api.uploadDataset(formData);
+      await fetchDatasets();
+    } catch (error) {
+      console.error('Upload failed:', error);
+      alert('Failed to upload dataset: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    // TODO: Handle file upload
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFile(e.dataTransfer.files[0]);
+    }
   };
 
   const handleFileSelect = (e) => {
-    // TODO: Handle file selection
+    if (e.target.files && e.target.files.length > 0) {
+      processFile(e.target.files[0]);
+    }
   };
 
-  const handleTestConnection = () => {
-    // TODO: Test database connection
-    alert('Connection test would run here');
+  const handleTestConnection = async () => {
+    if (!connectionString) {
+      alert("Please enter a connection string");
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      await api.connectDatabase({
+        name: "Remote Database",
+        connection_string: connectionString
+      });
+      setShowDbModal(false);
+      setConnectionString('');
+      await fetchDatasets();
+    } catch (error) {
+      console.error('Connection failed:', error);
+      alert('Failed to connect: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const tableData = datasets.map((dataset) => ({
@@ -58,7 +110,14 @@ export default function Datasets() {
         <Button variant="ghost" size="sm">
           View
         </Button>
-        <Button variant="danger" size="sm">
+        <Button variant="danger" size="sm" onClick={async () => {
+          try {
+            await api.deleteDataset(dataset.id);
+            fetchDatasets();
+          } catch(e) {
+            console.error(e);
+          }
+        }}>
           Delete
         </Button>
       </div>
@@ -76,9 +135,10 @@ export default function Datasets() {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-card p-12 text-center mb-8 transition-colors ${
+          className={`border-2 border-dashed rounded-card p-12 text-center mb-8 transition-colors cursor-pointer ${
             isDragging ? 'border-signal bg-signal-dim' : 'border-border hover:border-muted'
           }`}
+          onClick={() => document.getElementById('file-upload').click()}
         >
           <p className="text-muted mb-4">
             Drop CSV or Excel here, or click to browse
@@ -90,11 +150,9 @@ export default function Datasets() {
             className="hidden"
             id="file-upload"
           />
-          <label htmlFor="file-upload">
-            <Button variant="ghost" size="sm" as="span">
-              Browse files
-            </Button>
-          </label>
+          <Button variant="ghost" size="sm">
+            Browse files
+          </Button>
         </div>
 
         {/* Database Connection Button */}
@@ -105,7 +163,30 @@ export default function Datasets() {
         </div>
 
         {/* Datasets Table */}
-        <Table columns={columns} data={tableData} />
+        {isLoading ? (
+          <div className="bg-surface border border-border rounded-card overflow-hidden">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <div className="flex items-center gap-4 flex-1">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-5 w-16" />
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-8 w-16" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : datasets.length > 0 ? (
+          <Table columns={columns} data={tableData} />
+        ) : (
+          <div className="bg-surface border border-border rounded-card p-8 text-center text-muted">
+            No datasets yet. Upload one to get started.
+          </div>
+        )}
 
         {/* Database Connection Modal */}
         <Modal isOpen={showDbModal} onClose={() => setShowDbModal(false)}>

@@ -26,6 +26,17 @@ class Settings(BaseSettings):
     MAIL_STARTTLS: bool = True
     MAIL_SSL_TLS: bool = False
     
+    # Aliyun OSS
+    ALIYUN_ACCESS_KEY_ID: Optional[str] = None
+    ALIYUN_ACCESS_KEY_SECRET: Optional[str] = None
+    ALIYUN_OSS_ENDPOINT: Optional[str] = None
+    ALIYUN_OSS_BUCKET_NAME: Optional[str] = None
+    
+    # AI Models
+    QWEN_API_KEY: Optional[str] = None
+    OPENROUTER_API_KEY: Optional[str] = None
+    E2B_API_KEY: Optional[str] = None
+
     class Config:
         case_sensitive = True
         env_file = ".env"

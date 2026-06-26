@@ -10,3 +10,9 @@ psycopg2-binary
 alembic
 fastapi-mail
 email-validator
+requests
+python-multipart
+oss2
+openai
+e2b_code_interpreter
+pandas

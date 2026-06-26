@@ -55,8 +55,10 @@ def execute_python_sandbox(code: str) -> str:
     if not settings.E2B_API_KEY:
         return "Error: E2B_API_KEY is not configured. Sandbox execution unavailable."
 
+    os.environ["E2B_API_KEY"] = settings.E2B_API_KEY
+
     try:
-        with Sandbox(api_key=settings.E2B_API_KEY) as sandbox:
+        with Sandbox.create() as sandbox:
             execution = sandbox.run_code(code)
             
             output = ""

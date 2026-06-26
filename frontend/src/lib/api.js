@@ -5,7 +5,7 @@ export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem('token');
   
   const headers = {
-    'Content-Type': 'application/json',
+    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     ...(token && { 'Authorization': `Bearer ${token}` }),
     ...options.headers,
   };
@@ -16,7 +16,16 @@ export async function apiRequest(endpoint, options = {}) {
   });
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.statusText}`);
+    let errorMessage = `API error: ${response.statusText}`;
+    try {
+      const errorData = await response.json();
+      if (errorData.detail) {
+        errorMessage = errorData.detail;
+      }
+    } catch (e) {
+      // If parsing fails, use statusText
+    }
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -24,10 +33,17 @@ export async function apiRequest(endpoint, options = {}) {
 
 export const api = {
   // Auth
-  login: (credentials) => apiRequest('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(credentials),
-  }),
+  login: (credentials) => {
+    // FastAPI OAuth2PasswordRequestForm expects form data, not JSON
+    const formData = new URLSearchParams();
+    formData.append('username', credentials.email);
+    formData.append('password', credentials.password);
+    return apiRequest('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formData,
+    });
+  },
   register: (data) => apiRequest('/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -36,11 +52,11 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ credential }),
   }),
-  verifyEmail: (token) => apiRequest('/auth/verify-email', {
-    method: 'POST',
-    body: JSON.stringify({ token }),
+  verifyEmail: (token) => apiRequest(`/auth/verify-email?token=${token}`, {
+    method: 'GET',
   }),
   logout: () => apiRequest('/auth/logout', { method: 'POST' }),
+  getCurrentUser: () => apiRequest('/users/me', { method: 'GET' }),
 
   // Sessions
   getSessions: () => apiRequest('/sessions'),
@@ -58,6 +74,10 @@ export const api = {
     method: 'POST',
     headers: {},
     body: formData,
+  }),
+  connectDatabase: (data) => apiRequest('/datasets/connect', {
+    method: 'POST',
+    body: JSON.stringify(data),
   }),
   deleteDataset: (id) => apiRequest(`/datasets/${id}`, { method: 'DELETE' }),
 

@@ -3,7 +3,7 @@ import { Send, ChevronDown, ChevronRight, Loader2, CheckCircle, XCircle, Zap } f
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import Skeleton from '../ui/Skeleton';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../store/toastStore';
 import { api } from '../../lib/api';
 
@@ -11,7 +11,7 @@ export default function ConversationalChat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [showSchema, setShowSchema] = useState(false);
+  const [showSchema, setShowSchema] = useState(true);
   const [datasets, setDatasets] = useState([]);
   const [selectedDatasetId, setSelectedDatasetId] = useState(null);
   const [schema, setSchema] = useState([]);
@@ -20,9 +20,12 @@ export default function ConversationalChat() {
   const messagesEndRef = useRef(null);
   const addToast = useToastStore((state) => state.addToast);
   const { id: sessionId } = useParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoadingData(true);
+      setMessages([]);
       try {
         const data = await api.getDatasets();
         setDatasets(data);
@@ -56,14 +59,12 @@ export default function ConversationalChat() {
         }
         
         if (data.length > 0) {
-          setSelectedDatasetId(data[0].id);
-          // Fetch schema for the first dataset
-          const schemaData = await api.getDatasetSchema(data[0].id);
-          setSchema(schemaData.columns || []);
+          // Do not auto-select for new sessions so user explicitly chooses
+          setSelectedDatasetId(null);
           setMessages([
             {
               role: 'agent',
-              content: `I've connected to your datasets. You can ask questions about ${data.map(d => d.name).join(', ')}. What would you like to know?`,
+              content: "Please select a dataset from the left panel to get started.",
             },
           ]);
         } else {
@@ -88,7 +89,7 @@ export default function ConversationalChat() {
     };
 
     fetchData();
-  }, []);
+  }, [sessionId]);
 
   useEffect(() => {
     const fetchSchema = async () => {
@@ -172,8 +173,6 @@ export default function ConversationalChat() {
         })
       });
 
-      setIsTyping(false);
-
       if (!response.ok) {
         throw new Error('Failed to fetch from AI');
       }
@@ -181,19 +180,27 @@ export default function ConversationalChat() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let done = false;
+      let buffer = '';
 
       while (!done) {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         
         if (value) {
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\\n');
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // keep the last partial line in the buffer
           
           for (const line of lines) {
-            if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('data: ') && trimmedLine !== 'data: [DONE]') {
               try {
-                const data = JSON.parse(line.slice(6));
+                const data = JSON.parse(trimmedLine.slice(6));
+                
+                if (data.session_id && (!sessionId || sessionId === 'new')) {
+                  navigate(`/session/${data.session_id}`, { replace: true });
+                }
+                
                 if (data.error) {
                   setMessages((prev) => {
                     const newMessages = [...prev];
@@ -266,7 +273,6 @@ export default function ConversationalChat() {
       }
     } catch (error) {
       console.error("Chat error:", error);
-      setIsTyping(false);
       addToast('Failed to communicate with the server', 'error');
       setMessages((prev) => {
         const newMessages = [...prev];
@@ -275,6 +281,8 @@ export default function ConversationalChat() {
         }
         return newMessages;
       });
+    } finally {
+      setIsTyping(false);
     }
   };
 
@@ -323,7 +331,7 @@ export default function ConversationalChat() {
           </Button>
         </div>
 
-        <div className="p-4 flex-1">
+        <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
           <button
             onClick={() => setShowSchema(!showSchema)}
             className="font-mono text-sm text-ink mb-3 flex items-center gap-2"
@@ -426,14 +434,19 @@ export default function ConversationalChat() {
         {/* Input Bar */}
         <div className="p-4 border-t border-border">
           <div className="flex gap-3">
-            <input
-              type="text"
+            <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !isTyping && handleSend()}
-              placeholder="Ask a question about your data..."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (!isTyping) handleSend();
+                }
+              }}
+              placeholder="Ask a question about your data... (Shift+Enter for new line)"
               disabled={isTyping}
-              className="flex-1 bg-surface border border-border rounded-input h-12 px-4 text-ink focus:border-signal focus:outline-none transition-colors disabled:opacity-50"
+              rows={1}
+              className="flex-1 bg-surface border border-border rounded-input min-h-[48px] max-h-32 py-3 px-4 text-ink focus:border-signal focus:outline-none transition-colors disabled:opacity-50 resize-none custom-scrollbar"
             />
             <button
               onClick={handleSend}

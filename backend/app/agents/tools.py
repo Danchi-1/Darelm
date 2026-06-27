@@ -24,15 +24,18 @@ def get_dataset_context(dataset_id: str, db: Session) -> dict:
     }
 
     # Extract schema if it's a file
-    if dataset.dataset_type in ["csv", "excel"] and dataset.storage_url:
+    if dataset.dataset_type.lower() in ["csv", "excel"] and dataset.storage_url:
         try:
             # Handle local fallback vs full URL
             path = dataset.storage_url
+            if path.startswith("local://"):
+                path = path.replace("local://", "")
+                
             if not path.startswith("http"):
                 # If it's a relative path in local dev, make it absolute
                 path = os.path.abspath(path)
 
-            if dataset.dataset_type == "csv":
+            if dataset.dataset_type.lower() == "csv":
                 df = pd.read_csv(path, nrows=5)
             else:
                 df = pd.read_excel(path, nrows=5)
@@ -46,7 +49,7 @@ def get_dataset_context(dataset_id: str, db: Session) -> dict:
             
     return result
 
-def execute_python_sandbox(code: str) -> str:
+def execute_python_sandbox(code: str, dataset_path: str = None, sandbox_filename: str = None) -> str:
     """
     Executes AI-generated Python code in a secure E2B sandbox.
     """
@@ -59,6 +62,16 @@ def execute_python_sandbox(code: str) -> str:
 
     try:
         with Sandbox.create() as sandbox:
+            if dataset_path and sandbox_filename and not dataset_path.startswith("http"):
+                try:
+                    if dataset_path.startswith("local://"):
+                        dataset_path = dataset_path.replace("local://", "")
+                    abs_path = os.path.abspath(dataset_path)
+                    with open(abs_path, 'rb') as f:
+                        sandbox.files.write(sandbox_filename, f.read())
+                except Exception as e:
+                    return f"Error uploading dataset to sandbox: {str(e)}"
+                    
             execution = sandbox.run_code(code)
             
             output = ""

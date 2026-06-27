@@ -1,4 +1,4 @@
-import Sidebar from '../components/layout/Sidebar';
+import AppLayout from '../components/layout/AppLayout';
 import { useAuthStore } from '../store/authStore';
 
 export default function Settings() {
@@ -6,9 +6,8 @@ export default function Settings() {
   const logout = useAuthStore((state) => state.logout);
 
   return (
-    <div className="flex min-h-screen bg-void">
-      <Sidebar />
-      <main className="flex-1 md:ml-60 p-6 md:p-12 pb-20 md:pb-12">
+    <AppLayout>
+      <div className="p-6 md:p-12 pb-20 md:pb-12 max-w-4xl mx-auto w-full">
         <h1 className="font-mono text-2xl text-ink mb-8">Settings</h1>
 
         <div className="max-w-2xl space-y-6">
@@ -48,7 +47,7 @@ export default function Settings() {
             </button>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

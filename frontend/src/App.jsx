@@ -7,7 +7,6 @@ import VerifyEmail from './pages/VerifyEmail';
 import Dashboard from './pages/Dashboard';
 import Session from './pages/Session';
 import Datasets from './pages/Datasets';
-import History from './pages/History';
 import Settings from './pages/Settings';
 import ToastContainer from './components/ui/ToastContainer';
 import { useAuthStore } from './store/authStore';
@@ -85,14 +84,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/history"
-          element={
-            <ProtectedRoute>
-              <History />
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/settings"
           element={

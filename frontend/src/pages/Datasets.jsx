@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import Sidebar from '../components/layout/Sidebar';
+import AppLayout from '../components/layout/AppLayout';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Modal from '../components/ui/Modal';
@@ -178,9 +178,8 @@ export default function Datasets() {
   }));
 
   return (
-    <div className="flex min-h-screen bg-void">
-      <Sidebar />
-      <main className="flex-1 ml-60 p-12">
+    <AppLayout>
+      <div className="p-12 max-w-6xl mx-auto">
         <h1 className="font-mono text-2xl text-ink mb-8">Datasets</h1>
 
         {/* Upload Zone */}
@@ -292,7 +291,7 @@ export default function Datasets() {
             </div>
           </div>
         </Modal>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

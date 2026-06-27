@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import Sidebar from '../components/layout/Sidebar';
+import AppLayout from '../components/layout/AppLayout';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import Skeleton from '../components/ui/Skeleton';
@@ -63,9 +63,8 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-void">
-      <Sidebar />
-      <main className="flex-1 md:ml-60 p-6 md:p-12 pb-20 md:pb-12 flex flex-col items-center justify-center">
+    <AppLayout>
+      <div className="p-6 md:p-12 pb-20 md:pb-12 flex flex-col items-center justify-center w-full min-h-full">
         <div className="text-center mb-8 md:mb-12">
           <h1 className="text-xl md:text-2xl text-ink mb-2">
             {getGreeting()}, {userName}.
@@ -73,7 +72,7 @@ export default function Dashboard() {
           <p className="text-muted">What do you want to do?</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12 w-full max-w-4xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12 w-full max-w-4xl mx-auto">
           {agents.map((agent) => (
             <Link
               key={agent.number}
@@ -95,7 +94,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div className="w-full max-w-4xl">
+        <div className="w-full max-w-4xl mx-auto">
           <h2 className="font-mono text-base md:text-lg text-ink mb-4">Recent sessions</h2>
           <div className="bg-surface border border-border rounded-card overflow-hidden">
             {isLoading ? (
@@ -133,7 +132,7 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

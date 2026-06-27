@@ -33,11 +33,21 @@ class QwenClient:
         
         # Build the initial context
         context_msg = "You have no datasets loaded."
+        dataset_path_for_sandbox = None
+        sandbox_filename = None
+        
         if dataset_context:
+            url_or_connection = dataset_context.get('url_or_connection', '')
+            if not url_or_connection.startswith('http'):
+                dataset_path_for_sandbox = url_or_connection
+                ext = ".csv" if "csv" in dataset_context.get("dataset_type", "csv").lower() else ".xlsx"
+                sandbox_filename = f"/home/user/dataset{ext}"
+                url_or_connection = f"{sandbox_filename} (Use this exact path in pandas)"
+                
             context_msg = f"""
 Dataset Loaded:
 - Name: {dataset_context.get('dataset_name')}
-- URL/Connection: {dataset_context.get('url_or_connection')}
+- URL/Connection: {url_or_connection}
 - Schema: {json.dumps(dataset_context.get('schema'))}
 """
             
@@ -142,11 +152,16 @@ Dataset Loaded:
                         args_str = tc["function"]["arguments"]
                         try:
                             args = json.loads(args_str)
-                            result = execute_python_sandbox(args.get("code", ""))
+                            code = args.get("code", "")
+                            # Fix Qwen double-escaped newlines in JSON
+                            code = code.replace("\\n", "\n")
+                            result = execute_python_sandbox(code, dataset_path_for_sandbox, sandbox_filename)
                             status = "completed"
+                            tc["result"] = result
                         except Exception as e:
                             result = f"Error: {str(e)}"
                             status = "failed"
+                            tc["result"] = result
                         
                         yield f"data: {json.dumps({'tool_result': {'id': tc['id'], 'result': result, 'status': status}})}\n\n"
                         

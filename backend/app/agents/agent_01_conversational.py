@@ -63,28 +63,77 @@ Provide your reasoning process if needed, but end with a clear Answer."""
 
     # Retrieve history for context
     history_records = db.query(ChatMessage).filter(ChatMessage.session_id == session.id).order_by(ChatMessage.created_at).all()
-    history = [{"role": msg.role, "content": msg.content} for msg in history_records]
+    history = []
+    for msg in history_records:
+        if msg.role == "user":
+            history.append({"role": "user", "content": msg.content})
+        elif msg.role == "agent":
+            tool_calls_data = None
+            if msg.tool_calls:
+                try:
+                    tool_calls_data = json.loads(msg.tool_calls)
+                except:
+                    pass
+            
+            if tool_calls_data:
+                formatted_tc = []
+                for tc in tool_calls_data:
+                    formatted_tc.append({
+                        "id": tc.get("id"),
+                        "type": "function",
+                        "function": {
+                            "name": tc.get("function", {}).get("name", ""),
+                            "arguments": tc.get("function", {}).get("arguments", "")
+                        }
+                    })
+                
+                history.append({
+                    "role": "assistant",
+                    "content": msg.content or None,
+                    "tool_calls": formatted_tc
+                })
+                
+                for tc in tool_calls_data:
+                    history.append({
+                        "role": "tool",
+                        "tool_call_id": tc.get("id"),
+                        "name": tc.get("function", {}).get("name", ""),
+                        "content": str(tc.get("result", ""))
+                    })
+            else:
+                history.append({"role": "assistant", "content": msg.content})
 
     def on_complete(content, thought, tool_calls):
-        # Save agent message
-        agent_msg = ChatMessage(
-            session_id=session.id, 
-            role="agent", 
-            content=content or "", 
-            thought=thought, 
-            tool_calls=json.dumps(tool_calls) if tool_calls else None
-        )
-        db.add(agent_msg)
-        db.commit()
+        # Save agent message with a fresh session to avoid stale connection timeouts
+        from app.db.session import SessionLocal
+        fresh_db = SessionLocal()
+        try:
+            agent_msg = ChatMessage(
+                session_id=session.id, 
+                role="agent", 
+                content=content or "", 
+                thought=thought, 
+                tool_calls=json.dumps(tool_calls) if tool_calls else None
+            )
+            fresh_db.add(agent_msg)
+            fresh_db.commit()
+        finally:
+            fresh_db.close()
 
-    return StreamingResponse(
-        qwen_client.stream_chat(
+    async def chat_stream():
+        yield f"data: {json.dumps({'session_id': str(session.id)})}\n\n"
+        
+        async for chunk in qwen_client.stream_chat(
             prompt=request.message, 
             system_prompt=system_prompt,
             dataset_context=dataset_context,
             history=history,
             on_complete=on_complete
-        ),
+        ):
+            yield chunk
+
+    return StreamingResponse(
+        chat_stream(),
         media_type="text/event-stream"
     )
 

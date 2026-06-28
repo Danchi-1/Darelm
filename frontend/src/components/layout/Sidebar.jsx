@@ -181,7 +181,7 @@ export default function Sidebar() {
         </nav>
 
         {/* Chat History Section */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+        <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar p-3">
           <div className="mb-4 px-2">
             <select
               value={selectedAgent}

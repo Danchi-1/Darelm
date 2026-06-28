@@ -142,7 +142,7 @@ export default function Sidebar() {
       {/* Sidebar Container */}
       <aside 
         className={clsx(
-          'fixed top-0 left-0 h-screen bg-surface border-r border-border flex-col z-50 transition-transform duration-300 w-64',
+          'fixed top-0 left-0 h-screen bg-surface border-r border-border flex flex-col z-50 transition-transform duration-300 w-64',
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:-translate-x-[256px]'
         )}
       >

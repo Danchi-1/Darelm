@@ -230,7 +230,8 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
                         print(f"[EXECUTOR] Step {step_id} - Iteration {attempt}: Received LLM response")
                     except Exception as llm_e:
                         print(f"[EXECUTOR] Step {step_id} - Iteration {attempt}: LLM Exception! {str(llm_e)}")
-                        raise llm_e
+                        yield f"data: {json.dumps({'status': 'error', 'message': f'LLM Connection Error: {str(llm_e)}'})}\n\n"
+                        return
                     
                     msg = response.choices[0].message
                     if msg.tool_calls:
@@ -271,6 +272,10 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
                                     
                         except Exception as e:
                             result_str = f"Tool execution failed: {str(e)}"
+                            
+                        # Truncate to prevent context window overflow
+                        if len(result_str) > 4000:
+                            result_str = result_str[:4000] + "\n\n...[TRUNCATED: Output exceeded 4000 characters. If you need more data, aggregate or sample it in your python code.]"
                             
                         history.append({
                             "role": "tool",

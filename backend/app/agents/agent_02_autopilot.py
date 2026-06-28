@@ -144,21 +144,34 @@ async def confirm_autopilot(
                 if dataset_path.startswith("local://"):
                     dataset_path = dataset_path.replace("local://", "")
                 abs_path = os.path.abspath(dataset_path)
+                
+                # Compress the file to avoid E2B 50MB payload timeout
+                import gzip
                 with open(abs_path, 'rb') as f:
-                    file_bytes = f.read()
-                    await asyncio.to_thread(sandbox.files.write, sandbox_filename, file_bytes)
-                print("[EXECUTOR] Dataset uploaded.")
+                    compressed_bytes = gzip.compress(f.read())
+                    await asyncio.to_thread(sandbox.files.write, f"{sandbox_filename}.gz", compressed_bytes)
+                print("[EXECUTOR] Dataset uploaded (compressed).")
                     
             # Run initial import script to make df available globally
             init_code = f"""import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import gzip
+import shutil
+import os
 
 try:
+    if os.path.exists('{sandbox_filename}.gz'):
+        with gzip.open('{sandbox_filename}.gz', 'rb') as f_in:
+            with open('{sandbox_filename}', 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        print("Unzipped {sandbox_filename}.gz")
+        
     if '{sandbox_filename}'.endswith('.csv'):
         df = pd.read_csv('{sandbox_filename}')
     else:
         df = pd.read_excel('{sandbox_filename}')
+    print("Dataset loaded into `df`")
 except Exception as e:
     print('Failed to load dataset:', e)
 """

@@ -7,7 +7,7 @@ export default function AppLayout({ children }) {
   const { isSidebarOpen, setSidebarOpen } = useLayoutStore();
 
   return (
-    <div className="flex min-h-screen bg-void overflow-hidden">
+    <div className="flex h-screen bg-void overflow-hidden">
       <Sidebar />
       
       <div 

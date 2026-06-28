@@ -442,3 +442,26 @@ def get_session(
             } for s in steps
         ]
     }
+
+@router.get("/{session_id}/export/{format}")
+def export_session(
+    session_id: str,
+    format: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    session = db.query(AutopilotSession).filter(AutopilotSession.id == session_id, AutopilotSession.user_id == current_user.id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    report = json.loads(session.report_json) if session.report_json else {"error": "Report not ready"}
+    
+    # Very basic export logic for MVP
+    if format.lower() == "json":
+        return Response(content=json.dumps(report, indent=2), media_type="application/json", headers={"Content-Disposition": f"attachment; filename=report_{session_id}.json"})
+    elif format.lower() == "csv":
+        return Response(content="Title,Content\nReport,Not supported in CSV yet", media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=report_{session_id}.csv"})
+    elif format.lower() == "pdf":
+        return Response(content="PDF Export not fully implemented yet", media_type="text/plain", headers={"Content-Disposition": f"attachment; filename=report_{session_id}.txt"})
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported format")

@@ -146,7 +146,7 @@ export default function Sidebar() {
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:-translate-x-[256px]'
         )}
       >
-        <div className="p-4 flex items-center justify-between border-b border-border">
+        <div className="p-4 flex shrink-0 items-center justify-between border-b border-border">
           <Link to="/" className="font-mono text-xl text-ink hover:text-signal transition-colors cursor-pointer">
             Darelm
           </Link>
@@ -158,7 +158,7 @@ export default function Sidebar() {
           </button>
         </div>
 
-        <nav className="p-3 border-b border-border space-y-1">
+        <nav className="p-3 border-b border-border space-y-1 shrink-0">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
@@ -281,7 +281,7 @@ export default function Sidebar() {
         </div>
 
         {/* User Profile Section */}
-        <div className="p-4 border-t border-border flex items-center justify-between">
+        <div className="p-4 border-t border-border flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 truncate">
             <div className="w-8 h-8 shrink-0 rounded-full bg-signal-dim flex items-center justify-center">
               <span className="font-mono text-xs text-signal">

@@ -273,9 +273,9 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
                         except Exception as e:
                             result_str = f"Tool execution failed: {str(e)}"
                             
-                        # Truncate to prevent context window overflow
+                        # Truncate to prevent context window overflow but keep the end of the log
                         if len(result_str) > 4000:
-                            result_str = result_str[:4000] + "\n\n...[TRUNCATED: Output exceeded 4000 characters. If you need more data, aggregate or sample it in your python code.]"
+                            result_str = result_str[:2000] + "\n\n...[TRUNCATED: Output exceeded 4000 characters. The agent must rewrite the python code to aggregate, summarize, or use df.head() instead of printing massive rows.]...\n\n" + result_str[-2000:]
                             
                         history.append({
                             "role": "tool",

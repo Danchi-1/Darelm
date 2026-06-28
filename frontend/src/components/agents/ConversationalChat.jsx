@@ -4,6 +4,8 @@ import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import Skeleton from '../ui/Skeleton';
 import { useParams, useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useToastStore } from '../../store/toastStore';
 import { api } from '../../lib/api';
 
@@ -326,7 +328,12 @@ export default function ConversationalChat() {
               </div>
             ))}
           </div>
-          <Button variant="ghost" size="sm" className="w-full mt-3">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="w-full mt-3"
+            onClick={() => navigate('/datasets')}
+          >
             + Add data
           </Button>
         </div>
@@ -405,8 +412,10 @@ export default function ConversationalChat() {
                     )}
                     
                     {/* Final Response */}
-                    <div className="text-ink whitespace-pre-wrap">
-                      {message.content}
+                    <div className="text-ink text-sm w-full overflow-hidden markdown-body">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {message.content}
+                      </ReactMarkdown>
                     </div>
                   </>
                 )}

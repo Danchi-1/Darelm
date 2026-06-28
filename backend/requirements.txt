@@ -16,3 +16,4 @@ oss2
 openai
 e2b_code_interpreter
 pandas
+json-repair==0.61.0

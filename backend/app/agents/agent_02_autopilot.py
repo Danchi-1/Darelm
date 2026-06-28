@@ -338,17 +338,24 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
             with SessionLocal() as db:
                 all_steps = db.query(AutopilotStep).filter(AutopilotStep.session_id == session_id_str).order_by(AutopilotStep.step_index).all()
                 findings_for_report = []
+                prompt_findings = []
                 for s in all_steps:
                     try:
                         f_json = json.loads(s.findings_json)
                         findings_for_report.append(f_json)
+                        
+                        # Create a copy without base64 strings for the LLM prompt
+                        f_json_prompt = f_json.copy()
+                        if "chart_base64" in f_json_prompt:
+                            del f_json_prompt["chart_base64"]
+                        prompt_findings.append(f_json_prompt)
                     except:
                         pass
                     
             synth_prompt = f"""GOAL: {goal}
 PLAN: {json.dumps(plan)}
 COMPLETED FINDINGS:
-{json.dumps(findings_for_report, indent=2)}"""
+{json.dumps(prompt_findings, indent=2)}"""
 
             report_response = await qwen_client.generate_json(
                 prompt=synth_prompt,

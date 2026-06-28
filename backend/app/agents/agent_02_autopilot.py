@@ -124,6 +124,8 @@ async def confirm_autopilot(
             
         try:
             print("[EXECUTOR] Starting executor_stream...")
+            yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Provisioning secure analytical sandbox...'})}\n\n"
+            
             # Start E2B Sandbox with long timeout (30 mins = 1800s)
             print("[EXECUTOR] Creating E2B sandbox (in threadpool)...")
             sandbox = await asyncio.to_thread(Sandbox.create, timeout=1800, api_key=settings.E2B_API_KEY)
@@ -141,6 +143,8 @@ async def confirm_autopilot(
                 
             if dataset_path and not dataset_path.startswith("http"):
                 print(f"[EXECUTOR] Uploading dataset {dataset_path} to sandbox...")
+                yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Compressing and uploading dataset...'})}\n\n"
+                
                 if dataset_path.startswith("local://"):
                     dataset_path = dataset_path.replace("local://", "")
                 abs_path = os.path.abspath(dataset_path)
@@ -153,6 +157,7 @@ async def confirm_autopilot(
                 print("[EXECUTOR] Dataset uploaded (compressed).")
                     
             # Run initial import script to make df available globally
+            yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Initializing Python environment...'})}\n\n"
             init_code = f"""import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt

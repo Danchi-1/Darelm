@@ -15,6 +15,7 @@ class User(Base):
 
     datasets = relationship("Dataset", back_populates="owner", cascade="all, delete-orphan")
     chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
+    autopilot_sessions = relationship("AutopilotSession", back_populates="user", cascade="all, delete-orphan")
 
 
 class Dataset(Base):
@@ -31,6 +32,7 @@ class Dataset(Base):
 
     owner = relationship("User", back_populates="datasets")
     chat_sessions = relationship("ChatSession", back_populates="dataset", cascade="all, delete-orphan")
+    autopilot_sessions = relationship("AutopilotSession", back_populates="dataset", cascade="all, delete-orphan")
 
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
@@ -57,3 +59,37 @@ class ChatMessage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     session = relationship("ChatSession", back_populates="messages")
+
+class AutopilotSession(Base):
+    __tablename__ = "autopilot_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True)
+    goal = Column(String, nullable=False)
+    sandbox_id = Column(String, nullable=True)
+    plan_json = Column(String, nullable=True) # JSON string
+    report_json = Column(String, nullable=True) # JSON string
+    status = Column(String, nullable=False, default="planning") # planning, awaiting_confirmation, executing, completed, failed
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="autopilot_sessions")
+    dataset = relationship("Dataset", back_populates="autopilot_sessions")
+    steps = relationship("AutopilotStep", back_populates="session", cascade="all, delete-orphan", order_by="AutopilotStep.step_index")
+
+class AutopilotStep(Base):
+    __tablename__ = "autopilot_steps"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("autopilot_sessions.id", ondelete="CASCADE"), nullable=False)
+    step_index = Column(Integer, nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="pending") # pending, executing, completed, failed
+    findings_json = Column(String, nullable=True) # JSON string
+    error = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    session = relationship("AutopilotSession", back_populates="steps")

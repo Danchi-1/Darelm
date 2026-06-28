@@ -5,6 +5,7 @@ from app.api.auth import router as auth_router
 from app.api.users import router as users_router
 from app.api.datasets import router as datasets_router
 from app.agents.agent_01_conversational import router as agent_01_router
+from app.agents.agent_02_autopilot import router as agent_02_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -24,6 +25,7 @@ app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["aut
 app.include_router(users_router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
 app.include_router(datasets_router, prefix=f"{settings.API_V1_STR}/datasets", tags=["datasets"])
 app.include_router(agent_01_router, prefix=f"{settings.API_V1_STR}/agents/01", tags=["agent-01"])
+app.include_router(agent_02_router, prefix=f"{settings.API_V1_STR}/agents/02", tags=["agent-02"])
 
 @app.get("/")
 def root():

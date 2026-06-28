@@ -99,10 +99,12 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ query }),
   }),
-  autopilotAnalyze: (data) => apiRequest('/agents/02/analyze', {
+  autopilotStart: (data) => apiRequest('/agents/02/start', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  getAutopilotSessions: () => apiRequest('/agents/02/sessions'),
+  autopilotGetSession: (id) => apiRequest(`/agents/02/sessions/${id}`),
   autopilotExport: (sessionId, format) => apiRequest(`/agents/02/${sessionId}/export/${format}`, {
     method: 'GET',
   }),

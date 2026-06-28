@@ -27,11 +27,15 @@ export default function Sidebar() {
   const [editingSession, setEditingSession] = useState(null);
   const [editName, setEditName] = useState('');
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [selectedAgent, setSelectedAgent] = useState('01');
 
   useEffect(() => {
     const fetchSessions = async () => {
+      setIsLoading(true);
       try {
-        const data = await api.getSessions();
+        const data = selectedAgent === '01' 
+          ? await api.getSessions() 
+          : await api.getAutopilotSessions();
         setSessions(data);
       } catch (error) {
         console.error('Failed to fetch sessions:', error);
@@ -41,7 +45,7 @@ export default function Sidebar() {
     };
 
     fetchSessions();
-  }, [location.pathname]); // Refetch when navigation changes (e.g., new chat started)
+  }, [location.pathname, selectedAgent]); // Refetch when navigation or agent changes
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -178,6 +182,17 @@ export default function Sidebar() {
 
         {/* Chat History Section */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+          <div className="mb-4 px-2">
+            <select
+              value={selectedAgent}
+              onChange={(e) => setSelectedAgent(e.target.value)}
+              className="w-full bg-surface-raised border border-border rounded-btn text-xs text-ink p-2 focus:outline-none focus:border-signal outline-none"
+            >
+              <option value="01">Agent 01 - Conversational</option>
+              <option value="02">Agent 02 - Autopilot</option>
+            </select>
+          </div>
+          
           {isLoading ? (
             <div className="space-y-4 px-2">
               <div className="h-4 w-16 bg-surface-raised rounded animate-pulse" />
@@ -209,7 +224,7 @@ export default function Sidebar() {
                           </div>
                         ) : (
                           <Link
-                            to={`/session/${session.id}`}
+                            to={`/session/${session.id}?agent=${selectedAgent}`}
                             className={clsx(
                               'flex items-center justify-between px-3 py-2 rounded-btn text-sm transition-colors duration-150 relative overflow-hidden group',
                               location.pathname === `/session/${session.id}`

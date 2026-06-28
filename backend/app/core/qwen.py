@@ -11,8 +11,8 @@ class QwenClient:
                 base_url="https://openrouter.ai/api/v1",
                 api_key=settings.OPENROUTER_API_KEY
             )
-            # Switch to a free Qwen model since user ran out of credits but needs Qwen
-            return client, "qwen/qwen3-coder:free"
+            # Switch to alternative free Qwen model since qwen3-coder is rate-limited upstream
+            return client, "qwen/qwen3-next-80b-a3b-instruct:free"
         elif settings.QWEN_API_KEY:
             client = AsyncOpenAI(
                 base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
@@ -21,7 +21,7 @@ class QwenClient:
             return client, "qwen-plus"
         return None, None
 
-    async def chat_completion(self, messages: list, tools: list = None, retries: int = 3):
+    async def chat_completion(self, messages: list, tools: list = None, retries: int = 10):
         client, model_name = self._get_client_and_model()
         if not client:
             raise Exception("No AI configured.")
@@ -38,16 +38,16 @@ class QwenClient:
             except openai.RateLimitError as e:
                 if attempt == retries - 1:
                     raise e
-                print(f"[QWEN API] Rate limit hit. Retrying in 30 seconds... (Attempt {attempt + 1}/{retries})")
-                await asyncio.sleep(30)
+                print(f"[QWEN API] Rate limit hit. Retrying in 35 seconds... (Attempt {attempt + 1}/{retries})")
+                await asyncio.sleep(35)
             except Exception as e:
                 if "429" in str(e) and attempt < retries - 1:
-                    print(f"[QWEN API] Rate limit hit (429). Retrying in 30 seconds... (Attempt {attempt + 1}/{retries})")
-                    await asyncio.sleep(30)
+                    print(f"[QWEN API] Rate limit hit (429). Retrying in 35 seconds... (Attempt {attempt + 1}/{retries})")
+                    await asyncio.sleep(35)
                 else:
                     raise e
 
-    async def generate_json(self, prompt: str, system_prompt: str, retries: int = 3) -> str:
+    async def generate_json(self, prompt: str, system_prompt: str, retries: int = 10) -> str:
         client, model_name = self._get_client_and_model()
         if not client:
             raise Exception("No AI configured.")
@@ -68,12 +68,12 @@ class QwenClient:
             except openai.RateLimitError as e:
                 if attempt == retries - 1:
                     raise e
-                print(f"[QWEN API] Rate limit hit. Retrying in 30 seconds... (Attempt {attempt + 1}/{retries})")
-                await asyncio.sleep(30)
+                print(f"[QWEN API] Rate limit hit. Retrying in 35 seconds... (Attempt {attempt + 1}/{retries})")
+                await asyncio.sleep(35)
             except Exception as e:
                 if "429" in str(e) and attempt < retries - 1:
-                    print(f"[QWEN API] Rate limit hit (429). Retrying in 30 seconds... (Attempt {attempt + 1}/{retries})")
-                    await asyncio.sleep(30)
+                    print(f"[QWEN API] Rate limit hit (429). Retrying in 35 seconds... (Attempt {attempt + 1}/{retries})")
+                    await asyncio.sleep(35)
                 else:
                     raise e
 

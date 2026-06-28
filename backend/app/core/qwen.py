@@ -21,34 +21,61 @@ class QwenClient:
             return client, "qwen-plus"
         return None, None
 
-    async def chat_completion(self, messages: list, tools: list = None):
+    async def chat_completion(self, messages: list, tools: list = None, retries: int = 3):
         client, model_name = self._get_client_and_model()
         if not client:
             raise Exception("No AI configured.")
             
-        return await client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            tools=tools,
-            extra_headers={"HTTP-Referer": "https://darelm.ai", "X-Title": "Darelm Platform"} if settings.OPENROUTER_API_KEY else None
-        )
+        import openai
+        for attempt in range(retries):
+            try:
+                return await client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    tools=tools,
+                    extra_headers={"HTTP-Referer": "https://darelm.ai", "X-Title": "Darelm Platform"} if settings.OPENROUTER_API_KEY else None
+                )
+            except openai.RateLimitError as e:
+                if attempt == retries - 1:
+                    raise e
+                print(f"[QWEN API] Rate limit hit. Retrying in 30 seconds... (Attempt {attempt + 1}/{retries})")
+                await asyncio.sleep(30)
+            except Exception as e:
+                if "429" in str(e) and attempt < retries - 1:
+                    print(f"[QWEN API] Rate limit hit (429). Retrying in 30 seconds... (Attempt {attempt + 1}/{retries})")
+                    await asyncio.sleep(30)
+                else:
+                    raise e
 
-    async def generate_json(self, prompt: str, system_prompt: str) -> str:
+    async def generate_json(self, prompt: str, system_prompt: str, retries: int = 3) -> str:
         client, model_name = self._get_client_and_model()
         if not client:
             raise Exception("No AI configured.")
             
-        # Qwen-plus might not support json_object natively in all SDKs, but we can instruct it
-        response = await client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"} if model_name != "qwen-plus" else None,
-            extra_headers={"HTTP-Referer": "https://darelm.ai", "X-Title": "Darelm Platform"} if settings.OPENROUTER_API_KEY else None
-        )
-        return response.choices[0].message.content
+        import openai
+        for attempt in range(retries):
+            try:
+                response = await client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": prompt}
+                    ],
+                    response_format={"type": "json_object"} if model_name != "qwen-plus" else None,
+                    extra_headers={"HTTP-Referer": "https://darelm.ai", "X-Title": "Darelm Platform"} if settings.OPENROUTER_API_KEY else None
+                )
+                return response.choices[0].message.content
+            except openai.RateLimitError as e:
+                if attempt == retries - 1:
+                    raise e
+                print(f"[QWEN API] Rate limit hit. Retrying in 30 seconds... (Attempt {attempt + 1}/{retries})")
+                await asyncio.sleep(30)
+            except Exception as e:
+                if "429" in str(e) and attempt < retries - 1:
+                    print(f"[QWEN API] Rate limit hit (429). Retrying in 30 seconds... (Attempt {attempt + 1}/{retries})")
+                    await asyncio.sleep(30)
+                else:
+                    raise e
 
     async def stream_chat(self, prompt: str, system_prompt: str, dataset_context: dict = None, history: list = None, on_complete=None):
         """

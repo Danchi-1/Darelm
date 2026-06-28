@@ -11,8 +11,8 @@ class QwenClient:
                 base_url="https://openrouter.ai/api/v1",
                 api_key=settings.OPENROUTER_API_KEY
             )
-            # Switch to a free model since user ran out of credits
-            return client, "meta-llama/llama-3.1-8b-instruct:free"
+            # Switch to a free Qwen model since user ran out of credits but needs Qwen
+            return client, "qwen/qwen3-coder:free"
         elif settings.QWEN_API_KEY:
             client = AsyncOpenAI(
                 base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",

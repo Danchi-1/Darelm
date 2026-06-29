@@ -27,7 +27,18 @@ export default function Sidebar() {
   const [editingSession, setEditingSession] = useState(null);
   const [editName, setEditName] = useState('');
   const [openMenuId, setOpenMenuId] = useState(null);
-  const [selectedAgent, setSelectedAgent] = useState('01');
+  const [selectedAgent, setSelectedAgent] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('agent') || '01';
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const urlAgent = params.get('agent');
+    if (urlAgent && urlAgent !== selectedAgent) {
+      setSelectedAgent(urlAgent);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const fetchSessions = async () => {

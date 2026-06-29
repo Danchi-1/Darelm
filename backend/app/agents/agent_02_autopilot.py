@@ -179,8 +179,19 @@ async def confirm_autopilot(
                     if not os.path.exists(gz):
                         raise Exception("Compression failed or timed out")
                         
+                    # Upload in 5MB chunks to bypass E2B payload limits
                     with open(gz, 'rb') as f:
-                        sb.files.write(f"{filename}.gz", f.read())
+                        chunk_size = 5 * 1024 * 1024
+                        part_num = 0
+                        while True:
+                            chunk = f.read(chunk_size)
+                            if not chunk:
+                                break
+                            sb.files.write(f"{filename}.gz.part{part_num}", chunk)
+                            part_num += 1
+                            
+                    # Concatenate chunks inside the sandbox
+                    sb.commands.run(f"cat {filename}.gz.part* > {filename}.gz && rm {filename}.gz.part*")
 
                 upload_task = asyncio.create_task(
                     asyncio.to_thread(wait_and_upload, sandbox, abs_path, gz_path, sandbox_filename)

@@ -216,10 +216,13 @@ export default function ConversationalChat() {
                 if (data.content) {
                   setMessages((prev) => {
                     const newMessages = [...prev];
+                    if (newMessages.length === 0) {
+                      newMessages.push({ role: 'agent', content: '' });
+                    }
                     const lastIndex = newMessages.length - 1;
                     newMessages[lastIndex] = {
                       ...newMessages[lastIndex],
-                      content: newMessages[lastIndex].content + data.content
+                      content: (newMessages[lastIndex].content || '') + data.content
                     };
                     return newMessages;
                   });
@@ -228,6 +231,9 @@ export default function ConversationalChat() {
                 if (data.thought) {
                   setMessages((prev) => {
                     const newMessages = [...prev];
+                    if (newMessages.length === 0) {
+                      newMessages.push({ role: 'agent', content: '' });
+                    }
                     const lastIndex = newMessages.length - 1;
                     newMessages[lastIndex] = {
                       ...newMessages[lastIndex],
@@ -240,6 +246,9 @@ export default function ConversationalChat() {
                 if (data.tool_call) {
                   setMessages((prev) => {
                     const newMessages = [...prev];
+                    if (newMessages.length === 0) {
+                      newMessages.push({ role: 'agent', content: '' });
+                    }
                     const lastIndex = newMessages.length - 1;
                     newMessages[lastIndex] = {
                       ...newMessages[lastIndex],

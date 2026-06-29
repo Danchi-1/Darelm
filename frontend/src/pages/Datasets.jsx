@@ -65,10 +65,10 @@ export default function Datasets() {
       return;
     }
     
-    // Validate file size (max 50MB)
-    const maxSize = 50 * 1024 * 1024;
+    // Validate file size (max 2GB)
+    const maxSize = 2000 * 1024 * 1024;
     if (file.size > maxSize) {
-      addToast('File too large. Maximum size is 50MB.', 'error');
+      addToast('File too large. Maximum size is 2GB.', 'error');
       return;
     }
     
@@ -162,9 +162,20 @@ export default function Datasets() {
     }
   };
 
+  const formatBytes = (bytes) => {
+    if (bytes === 0 || bytes === null || bytes === undefined) return '-';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   const tableData = datasets.map((dataset) => ({
     ...dataset,
-    type: <Badge variant="active">{dataset.type}</Badge>,
+    name: dataset.name,
+    type: <Badge variant="active">{dataset.dataset_type || dataset.type}</Badge>,
+    size: formatBytes(dataset.size_bytes),
+    date: dataset.created_at ? new Date(dataset.created_at).toLocaleDateString() : dataset.date,
     actions: (
       <div className="flex gap-2">
         <Button variant="ghost" size="sm" onClick={() => handleViewDataset(dataset)}>

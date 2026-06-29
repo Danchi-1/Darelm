@@ -149,14 +149,28 @@ async def confirm_autopilot(
                 if dataset_path.startswith("local://"):
                     dataset_path = dataset_path.replace("local://", "")
                 abs_path = os.path.abspath(dataset_path)
-                
-                # Compress the file to avoid E2B 50MB payload timeout
+                # Compress and upload in a separate thread so we don't block the FastAPI event loop
                 import gzip
-                with open(abs_path, 'rb') as f:
-                    compressed_bytes = gzip.compress(f.read())
-                    await asyncio.to_thread(sandbox.files.write, f"{sandbox_filename}.gz", compressed_bytes)
-                print("[EXECUTOR] Dataset uploaded (compressed).")
-                    
+                
+                def compress_and_upload(sb, path, filename):
+                    with open(path, 'rb') as f:
+                        compressed_bytes = gzip.compress(f.read())
+                    sb.files.write(f"{filename}.gz", compressed_bytes)
+
+                upload_task = asyncio.create_task(
+                    asyncio.to_thread(compress_and_upload, sandbox, abs_path, sandbox_filename)
+                )
+                
+                timer = 0
+                while not upload_task.done():
+                    await asyncio.sleep(2)
+                    timer += 2
+                    if timer % 10 == 0:
+                        yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': f'Still compressing and uploading large dataset... ({timer}s elapsed)'})}\n\n"
+                        
+                # Raise if the thread threw an exception
+                upload_task.result()
+                print("[EXECUTOR] Dataset uploaded (compressed).")                    
             # Run initial import script to make df available globally
             yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Initializing Python environment...'})}\n\n"
             init_code = f"""import pandas as pd

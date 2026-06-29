@@ -139,6 +139,7 @@ Provide your reasoning process if needed, but end with a clear Answer."""
         ):
             yield chunk
 
+    db.commit() # Release DB connection back to the pool to prevent timeout during long SSE stream
     return StreamingResponse(
         chat_stream(),
         media_type="text/event-stream"

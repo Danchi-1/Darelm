@@ -32,8 +32,11 @@ def get_dataset_context(dataset_id: str, db: Session) -> dict:
                 path = path.replace("local://", "")
                 
             if not path.startswith("http"):
-                # If it's a relative path in local dev, make it absolute
                 path = os.path.abspath(path)
+                # Fallback to compressed file if original was deleted by async task
+                if not os.path.exists(path) and os.path.exists(f"{path}.gz"):
+                    path = f"{path}.gz"
+                    result["url_or_connection"] = path
 
             if dataset.dataset_type.lower() == "csv":
                 df = pd.read_csv(path, nrows=5)
@@ -67,8 +70,26 @@ def execute_python_sandbox(code: str, dataset_path: str = None, sandbox_filename
                     if dataset_path.startswith("local://"):
                         dataset_path = dataset_path.replace("local://", "")
                     abs_path = os.path.abspath(dataset_path)
-                    with open(abs_path, 'rb') as f:
-                        sandbox.files.write(sandbox_filename, f.read())
+                    
+                    if abs_path.endswith('.gz'):
+                        # Chunked upload for compressed massive datasets
+                        with open(abs_path, 'rb') as f:
+                            chunk_size = 5 * 1024 * 1024
+                            part_num = 0
+                            while True:
+                                chunk = f.read(chunk_size)
+                                if not chunk:
+                                    break
+                                sandbox.files.write(f"{sandbox_filename}.gz.part{part_num}", chunk)
+                                part_num += 1
+                        # Reconstruct and unzip inside sandbox
+                        sandbox.commands.run(f"cat {sandbox_filename}.gz.part* > {sandbox_filename}.gz && rm {sandbox_filename}.gz.part*")
+                        # Prepend python code to unzip the dataset before the AI code runs
+                        unzip_code = f"import gzip, shutil; \nwith gzip.open('{sandbox_filename}.gz', 'rb') as f_in:\n  with open('{sandbox_filename}', 'wb') as f_out:\n    shutil.copyfileobj(f_in, f_out)\n"
+                        code = unzip_code + code
+                    else:
+                        with open(abs_path, 'rb') as f:
+                            sandbox.files.write(sandbox_filename, f.read())
                 except Exception as e:
                     return f"Error uploading dataset to sandbox: {str(e)}"
                     

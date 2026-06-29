@@ -304,7 +304,7 @@ export default function ConversationalChat() {
         <div className="p-4 border-b border-border">
           <h3 className="font-mono text-sm text-ink mb-3">Select dataset</h3>
           <select
-            value={selectedDatasetId}
+            value={selectedDatasetId || ""}
             onChange={(e) => setSelectedDatasetId(e.target.value)}
             className="w-full bg-surface border border-border rounded-card p-3 text-ink text-sm focus:border-signal focus:outline-none transition-colors mb-3"
           >

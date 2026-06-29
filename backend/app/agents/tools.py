@@ -71,6 +71,20 @@ def execute_python_sandbox(code: str, dataset_path: str = None, sandbox_filename
                         dataset_path = dataset_path.replace("local://", "")
                     abs_path = os.path.abspath(dataset_path)
                     
+                    import time
+                    wait_loops = 0
+                    # Wait if it's currently being compressed in the background
+                    while not os.path.exists(abs_path) and not os.path.exists(f"{abs_path}.gz") and wait_loops < 60:
+                        if os.path.exists(f"{abs_path}.gz.tmp"):
+                            time.sleep(2)
+                            wait_loops += 1
+                        else:
+                            break
+                            
+                    # If the async task finished and deleted the .csv, fallback to .gz
+                    if not os.path.exists(abs_path) and os.path.exists(f"{abs_path}.gz"):
+                        abs_path = f"{abs_path}.gz"
+                    
                     if abs_path.endswith('.gz'):
                         # Chunked upload for compressed massive datasets
                         with open(abs_path, 'rb') as f:

@@ -4,7 +4,7 @@ from openai import AsyncOpenAI
 from app.core.config import settings
 
 class QwenClient:
-    def _get_client_and_model(self):
+    def _get_client_and_model(self, tier="smart"):
         # We prioritize OpenRouter for the mock if available
         if settings.OPENROUTER_API_KEY:
             client = AsyncOpenAI(
@@ -18,37 +18,24 @@ class QwenClient:
                 base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
                 api_key=settings.QWEN_API_KEY
             )
-            return client, "qwen-plus"
+            model_name = "qwen-turbo" if tier == "fast" else "qwen-plus"
+            return client, model_name
         return None, None
 
-    async def chat_completion(self, messages: list, tools: list = None, retries: int = 10):
-        client, model_name = self._get_client_and_model()
+    async def chat_completion(self, messages: list, tools: list = None, tier="smart"):
+        client, model_name = self._get_client_and_model(tier)
         if not client:
             raise Exception("No AI configured.")
             
-        import openai
-        for attempt in range(retries):
-            try:
-                return await client.chat.completions.create(
-                    model=model_name,
-                    messages=messages,
-                    tools=tools,
-                    extra_headers={"HTTP-Referer": "https://darelm.ai", "X-Title": "Darelm Platform"} if settings.OPENROUTER_API_KEY else None
-                )
-            except openai.RateLimitError as e:
-                if attempt == retries - 1:
-                    raise e
-                print(f"[QWEN API] Rate limit hit. Retrying in 35 seconds... (Attempt {attempt + 1}/{retries})")
-                await asyncio.sleep(35)
-            except Exception as e:
-                if "429" in str(e) and attempt < retries - 1:
-                    print(f"[QWEN API] Rate limit hit (429). Retrying in 35 seconds... (Attempt {attempt + 1}/{retries})")
-                    await asyncio.sleep(35)
-                else:
-                    raise e
+        return await client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            tools=tools,
+            extra_headers={"HTTP-Referer": "https://darelm.ai", "X-Title": "Darelm Platform"} if settings.OPENROUTER_API_KEY else None
+        )
 
-    async def generate_json(self, prompt: str, system_prompt: str, retries: int = 10) -> str:
-        client, model_name = self._get_client_and_model()
+    async def generate_json(self, prompt: str, system_prompt: str, retries: int = 10, tier="smart") -> str:
+        client, model_name = self._get_client_and_model(tier)
         if not client:
             raise Exception("No AI configured.")
             
@@ -61,7 +48,7 @@ class QwenClient:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": prompt}
                     ],
-                    response_format={"type": "json_object"} if model_name != "qwen-plus" else None,
+                    response_format={"type": "json_object"} if "qwen" in model_name else None,
                     extra_headers={"HTTP-Referer": "https://darelm.ai", "X-Title": "Darelm Platform"} if settings.OPENROUTER_API_KEY else None
                 )
                 return response.choices[0].message.content
@@ -77,11 +64,11 @@ class QwenClient:
                 else:
                     raise e
 
-    async def stream_chat(self, prompt: str, system_prompt: str, dataset_context: dict = None, history: list = None, on_complete=None):
+    async def stream_chat(self, prompt: str, system_prompt: str, dataset_context: dict = None, history: list = None, on_complete=None, tier="smart"):
         """
         Yields server-sent events. Orchestrates the ReAct loop if tools are called.
         """
-        client, model_name = self._get_client_and_model()
+        client, model_name = self._get_client_and_model(tier)
         if not client:
             yield f"data: {json.dumps({'error': 'No AI configured.'})}\n\n"
             return

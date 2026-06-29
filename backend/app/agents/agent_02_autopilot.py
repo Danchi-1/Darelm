@@ -12,7 +12,7 @@ from app.db.models import User, Dataset, AutopilotSession, AutopilotStep
 from app.core.config import settings
 from app.core.qwen import qwen_client
 import re
-from app.agents.prompts_02 import PLANNER_PROMPT, EXECUTOR_PROMPT, SYNTHESIZER_PROMPT
+from app.agents.prompts_02 import PLANNER_PROMPT, EXECUTOR_PROMPT_SHORT, SYNTHESIZER_PROMPT
 from app.agents.tools import get_dataset_context
 import os
 
@@ -60,7 +60,8 @@ DATASET SCHEMA:
     
     plan_response = await qwen_client.generate_json(
         prompt=context_str,
-        system_prompt=PLANNER_PROMPT
+        system_prompt=PLANNER_PROMPT,
+        tier="smart"
     )
     
     try:
@@ -224,7 +225,7 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
                         for retry_attempt in range(10):
                             try:
                                 response = await qwen_client.chat_completion(
-                                    messages=[{"role": "system", "content": EXECUTOR_PROMPT}] + compressed_history,
+                                    messages=[{"role": "system", "content": EXECUTOR_PROMPT_SHORT}] + compressed_history,
                                     tools=[{"type": "function", "function": {
                                         "name": "execute_python",
                                         "description": "Execute Python code in a secure environment.",
@@ -235,7 +236,8 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
                                             },
                                             "required": ["code"]
                                         }
-                                    }}]
+                                    }}],
+                                    tier="fast"
                                 )
                                 print(f"[EXECUTOR] Step {step_id} - Iteration {attempt}: Received LLM response")
                                 break # Success, break retry loop
@@ -381,7 +383,8 @@ COMPLETED FINDINGS:
 
             report_response = await qwen_client.generate_json(
                 prompt=synth_prompt,
-                system_prompt=SYNTHESIZER_PROMPT
+                system_prompt=SYNTHESIZER_PROMPT,
+                tier="smart"
             )
             
             try:

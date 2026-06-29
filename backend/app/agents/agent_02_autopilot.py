@@ -150,12 +150,19 @@ async def confirm_autopilot(
                 if dataset_path.startswith("local://"):
                     dataset_path = dataset_path.replace("local://", "")
                 abs_path = os.path.abspath(dataset_path)
-                gz_path = f"{abs_path}.gz"
+                
+                # If the path already points to a .gz file (because get_dataset_context found it), we don't need to append .gz again.
+                if abs_path.endswith('.gz'):
+                    gz_path = abs_path
+                    raw_path = abs_path[:-3] # The original .csv path
+                else:
+                    raw_path = abs_path
+                    gz_path = f"{abs_path}.gz"
                 
                 # UX: Get size in MB
                 file_size_mb = 0
-                if os.path.exists(abs_path):
-                    file_size_mb = round(os.path.getsize(abs_path) / (1024 * 1024), 1)
+                if os.path.exists(raw_path):
+                    file_size_mb = round(os.path.getsize(raw_path) / (1024 * 1024), 1)
                 elif os.path.exists(gz_path):
                     file_size_mb = round(os.path.getsize(gz_path) / (1024 * 1024), 1)
 
@@ -194,7 +201,7 @@ async def confirm_autopilot(
                     sb.commands.run(f"cat {filename}.gz.part* > {filename}.gz && rm {filename}.gz.part*")
 
                 upload_task = asyncio.create_task(
-                    asyncio.to_thread(wait_and_upload, sandbox, abs_path, gz_path, sandbox_filename)
+                    asyncio.to_thread(wait_and_upload, sandbox, raw_path, gz_path, sandbox_filename)
                 )
                 
                 timer = 0

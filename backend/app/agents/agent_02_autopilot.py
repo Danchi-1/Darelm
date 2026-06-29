@@ -212,22 +212,44 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
                     await asyncio.sleep(0.5)
                     
                     print(f"[EXECUTOR] Step {step_id} - Iteration {attempt}: Calling LLM...")
+                    
+                    # Token Management: Aggressive History Compression
+                    if len(history) > 7:
+                        truncation_notice = {"role": "system", "content": f"[{len(history)-5} earlier reasoning steps were truncated to save context. Continue reasoning from the most recent observations below.]"}
+                        compressed_history = [history[0], truncation_notice] + history[-4:]
+                    else:
+                        compressed_history = history
+                        
                     try:
-                        response = await qwen_client.chat_completion(
-                            messages=[{"role": "system", "content": EXECUTOR_PROMPT}] + history,
-                            tools=[{"type": "function", "function": {
-                                "name": "execute_python",
-                                "description": "Execute Python code in a secure environment.",
-                                "parameters": {
-                                    "type": "object",
-                                    "properties": {
-                                        "code": {"type": "string", "description": "The python code to execute"}
-                                    },
-                                    "required": ["code"]
-                                }
-                            }}]
-                        )
-                        print(f"[EXECUTOR] Step {step_id} - Iteration {attempt}: Received LLM response")
+                        for retry_attempt in range(10):
+                            try:
+                                response = await qwen_client.chat_completion(
+                                    messages=[{"role": "system", "content": EXECUTOR_PROMPT}] + compressed_history,
+                                    tools=[{"type": "function", "function": {
+                                        "name": "execute_python",
+                                        "description": "Execute Python code in a secure environment.",
+                                        "parameters": {
+                                            "type": "object",
+                                            "properties": {
+                                                "code": {"type": "string", "description": "The python code to execute"}
+                                            },
+                                            "required": ["code"]
+                                        }
+                                    }}]
+                                )
+                                print(f"[EXECUTOR] Step {step_id} - Iteration {attempt}: Received LLM response")
+                                break # Success, break retry loop
+                            except Exception as e:
+                                import openai
+                                if isinstance(e, openai.RateLimitError) or "429" in str(e):
+                                    if retry_attempt == 9:
+                                        raise e
+                                    msg_str = f"API rate limit hit. Pausing 35s to cool down... (Retry {retry_attempt + 1}/10)"
+                                    yield f"data: {json.dumps({'status': 'executing_step', 'step': step_id, 'message': msg_str})}\n\n"
+                                    print(f"[EXECUTOR] {msg_str}")
+                                    await asyncio.sleep(35)
+                                else:
+                                    raise e
                     except Exception as llm_e:
                         print(f"[EXECUTOR] Step {step_id} - Iteration {attempt}: LLM Exception! {str(llm_e)}")
                         yield f"data: {json.dumps({'status': 'error', 'message': f'LLM Connection Error: {str(llm_e)}'})}\n\n"

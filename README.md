@@ -194,7 +194,7 @@ The platform prominently features Qwen Cloud branding:
 ### Massive Dataset Handling
 Darelm is designed to handle Enterprise-scale data without overwhelming the FastAPI backend:
 1. **Local Files (< 150MB)**: The backend natively compresses CSV/Excel files using `gzip` before uploading to the E2B Sandbox via HTTP, and injects a script to instantly unzip the data in the container. This bypasses the E2B 50MB payload timeout.
-2. **Massive Files (1GB+)**: The backend will generate a Pre-Signed URL (e.g., AWS S3, Google Cloud Storage) and pass the URL to the E2B sandbox. The sandbox will run a Python script to download the file directly from S3 at gigabit speeds, completely bypassing the FastAPI backend memory.
+2. **Massive Files (1GB+)**: The backend will generate a Pre-Signed URL (via Alibaba Cloud OSS `oss2`) and pass the URL to the E2B sandbox. The sandbox will run a Python script to download the file directly from OSS at gigabit speeds, completely bypassing the FastAPI backend memory.
 3. **Live Databases**: The backend securely passes the Database Connection String (URI) to the E2B Sandbox. The AI uses `sqlalchemy` to execute optimized SQL queries (Push-Down Compute) directly on the database cluster, returning only lightweight results to the Sandbox RAM. For complex ML/Python algorithms, the AI will pull a statistically significant random sample (e.g., `ORDER BY RANDOM() LIMIT 100000` or `TABLESAMPLE BERNOULLI`).
 
 ## Development Notes

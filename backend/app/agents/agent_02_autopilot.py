@@ -149,16 +149,40 @@ async def confirm_autopilot(
                 if dataset_path.startswith("local://"):
                     dataset_path = dataset_path.replace("local://", "")
                 abs_path = os.path.abspath(dataset_path)
-                # Compress and upload in a separate thread so we don't block the FastAPI event loop
-                import gzip
+                gz_path = f"{abs_path}.gz"
                 
-                def compress_and_upload(sb, path, filename):
-                    with open(path, 'rb') as f:
-                        compressed_bytes = gzip.compress(f.read())
-                    sb.files.write(f"{filename}.gz", compressed_bytes)
+                # UX: Get size in MB
+                file_size_mb = 0
+                if os.path.exists(abs_path):
+                    file_size_mb = round(os.path.getsize(abs_path) / (1024 * 1024), 1)
+                elif os.path.exists(gz_path):
+                    file_size_mb = round(os.path.getsize(gz_path) / (1024 * 1024), 1)
+
+                import gzip
+                import time
+                
+                def wait_and_upload(sb, raw_path, gz, filename):
+                    # Fallback compression if background task failed or didn't run
+                    if not os.path.exists(gz) and not os.path.exists(f"{raw_path}.gz.tmp"):
+                        if os.path.exists(raw_path):
+                            with open(raw_path, 'rb') as f_in:
+                                with gzip.open(gz, 'wb') as f_out:
+                                    f_out.writelines(f_in)
+                    
+                    # Wait for background task if it's currently compressing
+                    wait_loops = 0
+                    while not os.path.exists(gz) and wait_loops < 60:
+                        time.sleep(2)
+                        wait_loops += 1
+                        
+                    if not os.path.exists(gz):
+                        raise Exception("Compression failed or timed out")
+                        
+                    with open(gz, 'rb') as f:
+                        sb.files.write(f"{filename}.gz", f.read())
 
                 upload_task = asyncio.create_task(
-                    asyncio.to_thread(compress_and_upload, sandbox, abs_path, sandbox_filename)
+                    asyncio.to_thread(wait_and_upload, sandbox, abs_path, gz_path, sandbox_filename)
                 )
                 
                 timer = 0
@@ -166,7 +190,8 @@ async def confirm_autopilot(
                     await asyncio.sleep(2)
                     timer += 2
                     if timer % 10 == 0:
-                        yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': f'Still compressing and uploading large dataset... ({timer}s elapsed)'})}\n\n"
+                        msg = f"Your dataset ({file_size_mb}MB) is very large. Optimizing and securely transferring to the cloud environment... ({timer}s elapsed)"
+                        yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': msg})}\n\n"
                         
                 # Raise if the thread threw an exception
                 upload_task.result()

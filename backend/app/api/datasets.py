@@ -22,8 +22,39 @@ def get_datasets(
     datasets = db.query(Dataset).filter(Dataset.user_id == current_user.id).all()
     return datasets
 
+from fastapi import BackgroundTasks
+import os
+import gzip
+
+def compress_dataset_background(storage_url: str):
+    """Background task to compress local datasets and replace original."""
+    if storage_url.startswith("local://"):
+        local_path = storage_url.replace("local://", "")
+        abs_path = os.path.abspath(local_path)
+        
+        if os.path.exists(abs_path):
+            tmp_gz = f"{abs_path}.gz.tmp"
+            final_gz = f"{abs_path}.gz"
+            
+            try:
+                # Compress to temp file
+                with open(abs_path, 'rb') as f_in:
+                    with gzip.open(tmp_gz, 'wb') as f_out:
+                        f_out.writelines(f_in)
+                
+                # Atomic rename
+                os.rename(tmp_gz, final_gz)
+                
+                # Delete original
+                os.remove(abs_path)
+            except Exception as e:
+                print(f"Background compression failed: {e}")
+                if os.path.exists(tmp_gz):
+                    os.remove(tmp_gz)
+
 @router.post("/upload", response_model=DatasetResponse)
 async def upload_dataset(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -59,6 +90,10 @@ async def upload_dataset(
         db.add(dataset)
         db.commit()
         db.refresh(dataset)
+        
+        # Kick off background compression if it's a local file
+        background_tasks.add_task(compress_dataset_background, storage_url)
+        
         return dataset
         
     except Exception as e:

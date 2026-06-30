@@ -42,9 +42,7 @@ export default function Register() {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      const response = await api.googleAuth(credentialResponse.credential);
-      const token = response.access_token;
-      localStorage.setItem('token', token);
+      await api.googleAuth(credentialResponse.credential);
       
       // Decode Google credential to get user info
       const decoded = jwtDecode(credentialResponse.credential);
@@ -54,7 +52,7 @@ export default function Register() {
         picture: decoded.picture,
       };
       
-      login(user, token);
+      login(user);
       navigate('/dashboard');
     } catch (error) {
       showToastNotification(error.message || 'Google login failed', 'error');

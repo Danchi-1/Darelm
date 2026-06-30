@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks, Response
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 from app.api.deps import get_db
@@ -28,19 +28,26 @@ conf = ConnectionConfig(
 async def register(user_in: UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == user_in.email).first()
     if user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this username already exists in the system.",
+        if user.is_verified:
+            raise HTTPException(
+                status_code=400,
+                detail="The user with this username already exists in the system.",
+            )
+        else:
+            # User exists but is unverified. 
+            # Overwrite their password and resend the verification email.
+            user.hashed_password = get_password_hash(user_in.password)
+            db.commit()
+            db.refresh(user)
+    else:
+        user = User(
+            email=user_in.email,
+            hashed_password=get_password_hash(user_in.password),
+            is_verified=False
         )
-    
-    user = User(
-        email=user_in.email,
-        hashed_password=get_password_hash(user_in.password),
-        is_verified=False
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     
     # Send verification email via fastapi-mail
     verification_token = create_access_token(data={"sub": user.email})
@@ -81,7 +88,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     return {"msg": "Email verified successfully"}
 
 @router.post("/login", response_model=Token)
-def login(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
+def login(response: Response, db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user or not user.hashed_password:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
@@ -91,10 +98,11 @@ def login(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = 
         raise HTTPException(status_code=400, detail="Email not verified")
         
     access_token = create_access_token(data={"sub": user.email})
+    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True, secure=False, samesite="lax")
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/google", response_model=Token)
-def google_auth(auth_in: GoogleAuth, db: Session = Depends(get_db)):
+def google_auth(auth_in: GoogleAuth, response: Response, db: Session = Depends(get_db)):
     try:
         user_info = verify_google_token(auth_in.credential)
     except ValueError as e:
@@ -123,4 +131,10 @@ def google_auth(auth_in: GoogleAuth, db: Session = Depends(get_db)):
         db.commit()
         
     access_token = create_access_token(data={"sub": user.email})
+    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True, secure=False, samesite="lax")
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie(key="access_token", httponly=True, secure=False, samesite="lax")
+    return {"msg": "Successfully logged out"}

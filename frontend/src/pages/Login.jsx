@@ -17,11 +17,9 @@ export default function Login() {
     e.preventDefault();
     setError(null);
     try {
-      const response = await api.login({ email, password });
-      const token = response.access_token;
-      localStorage.setItem('token', token);
+      await api.login({ email, password });
       const user = await api.getCurrentUser();
-      login(user, token);
+      login(user);
       navigate('/dashboard');
     } catch (error) {
       setError(error.message);
@@ -31,9 +29,7 @@ export default function Login() {
   const handleGoogleSuccess = async (credentialResponse) => {
     setError(null);
     try {
-      const response = await api.googleAuth(credentialResponse.credential);
-      const token = response.access_token;
-      localStorage.setItem('token', token);
+      await api.googleAuth(credentialResponse.credential);
       
       // Decode Google credential to get user info
       const decoded = jwtDecode(credentialResponse.credential);
@@ -43,7 +39,7 @@ export default function Login() {
         picture: decoded.picture,
       };
       
-      login(user, token);
+      login(user);
       navigate('/dashboard');
     } catch (error) {
       setError(error.message);

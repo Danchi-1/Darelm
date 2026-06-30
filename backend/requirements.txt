@@ -3,7 +3,8 @@ uvicorn
 sqlalchemy
 pydantic
 pydantic-settings
-passlib[bcrypt]
+passlib
+bcrypt==3.2.2
 python-jose[cryptography]
 google-auth
 psycopg2-binary
@@ -17,3 +18,8 @@ openai
 e2b_code_interpreter
 pandas
 json-repair==0.61.0
+python-magic
+cryptography
+slowapi
+defusedxml
+openpyxl

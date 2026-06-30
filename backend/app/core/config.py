@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     QWEN_API_KEY: Optional[str] = None
     OPENROUTER_API_KEY: Optional[str] = None
     E2B_API_KEY: Optional[str] = None
+    
+    # Encryption
+    FERNET_KEY: Optional[str] = None
 
     class Config:
         case_sensitive = True

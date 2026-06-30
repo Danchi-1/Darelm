@@ -159,15 +159,14 @@ export default function ConversationalChat() {
     setMessages((prev) => [...prev, { role: 'agent', content: '' }]);
 
     try {
-      const token = localStorage.getItem('token');
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
       
       const response = await fetch(`${API_BASE}/agents/01/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` })
         },
+        credentials: 'include',
         body: JSON.stringify({
           message: input,
           dataset_id: selectedDatasetId,

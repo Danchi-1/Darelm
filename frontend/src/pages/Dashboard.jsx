@@ -113,7 +113,7 @@ export default function Dashboard() {
               sessions.map((session) => (
                 <Link
                   key={session.id}
-                  to={`/session/${session.id}`}
+                  to={`/session/${session.id}?agent=01`}
                   className="flex flex-col md:flex-row md:items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-border last:border-b-0 hover:bg-surface-raised transition-colors"
                 >
                   <div className="mb-2 md:mb-0">

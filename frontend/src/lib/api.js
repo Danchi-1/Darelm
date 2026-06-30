@@ -2,17 +2,16 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 export async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
-  const token = localStorage.getItem('token');
   
   const headers = {
     ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-    ...(token && { 'Authorization': `Bearer ${token}` }),
     ...options.headers,
   };
 
   const response = await fetch(url, {
     ...options,
     headers,
+    credentials: 'include'
   });
 
   if (!response.ok) {
@@ -69,11 +68,11 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  updateSession: (id, data) => apiRequest(`/agents/01/sessions/${id}`, {
+  updateSession: (agentId, id, data) => apiRequest(`/agents/${agentId}/sessions/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   }),
-  deleteSession: (id) => apiRequest(`/agents/01/sessions/${id}`, { method: 'DELETE' }),
+  deleteSession: (agentId, id) => apiRequest(`/agents/${agentId}/sessions/${id}`, { method: 'DELETE' }),
 
   // Datasets
   getDatasets: () => apiRequest('/datasets'),
@@ -112,6 +111,7 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  getMLSessions: () => apiRequest('/agents/03/sessions'),
   mlGetSession: (sessionId) => apiRequest(`/agents/03/session/${sessionId}`, {
     method: 'GET',
   }),

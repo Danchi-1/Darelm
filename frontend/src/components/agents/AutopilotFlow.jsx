@@ -97,14 +97,12 @@ export default function AutopilotFlow() {
     setIsConfirming(true);
     setPhase('execution');
     
-    const token = localStorage.getItem('token');
-    
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/agents/02/confirm`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
       },
+      credentials: 'include',
       body: JSON.stringify({ session_id: sessionId, user_feedback: userFeedback })
     }).then(async (response) => {
       const reader = response.body.getReader();
@@ -401,7 +399,7 @@ export default function AutopilotFlow() {
                 onClick={async () => {
                   try {
                     const res = await api.handoffToAgent01(sessionId);
-                    navigate(`/session/${res.session_id}`);
+                    navigate(`/session/${res.session_id}?agent=01`);
                   } catch (err) {
                     console.error("Handoff failed", err);
                     alert("Failed to handoff session to Agent 01");

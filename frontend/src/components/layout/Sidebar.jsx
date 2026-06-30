@@ -44,9 +44,14 @@ export default function Sidebar() {
     const fetchSessions = async () => {
       setIsLoading(true);
       try {
-        const data = selectedAgent === '01' 
-          ? await api.getSessions() 
-          : await api.getAutopilotSessions();
+        let data = [];
+        if (selectedAgent === '01') {
+          data = await api.getSessions();
+        } else if (selectedAgent === '02') {
+          data = await api.getAutopilotSessions();
+        } else if (selectedAgent === '03') {
+          data = await api.getMLSessions();
+        }
         setSessions(data);
       } catch (error) {
         console.error('Failed to fetch sessions:', error);
@@ -72,7 +77,7 @@ export default function Sidebar() {
     if (!confirm('Are you sure you want to delete this session?')) return;
     
     try {
-      await api.deleteSession(sessionId);
+      await api.deleteSession(selectedAgent, sessionId);
       setSessions(sessions.filter(s => s.id !== sessionId));
       addToast('Session deleted successfully', 'success');
       
@@ -104,7 +109,7 @@ export default function Sidebar() {
     }
     
     try {
-      await api.updateSession(sessionId, { title: editName });
+      await api.updateSession(selectedAgent, sessionId, { title: editName });
       setSessions(sessions.map(s => s.id === sessionId ? { ...s, title: editName } : s));
       setEditingSession(null);
       setEditName('');
@@ -201,6 +206,7 @@ export default function Sidebar() {
             >
               <option value="01">Agent 01 - Conversational</option>
               <option value="02">Agent 02 - Autopilot</option>
+              <option value="03">Agent 03 - ML Experimenter</option>
             </select>
           </div>
           

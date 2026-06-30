@@ -108,11 +108,36 @@ export const api = {
   autopilotExport: (sessionId, format) => apiRequest(`/agents/02/${sessionId}/export/${format}`, {
     method: 'GET',
   }),
-  mlExperiment: (data) => apiRequest('/agents/03/experiment', {
+  mlStartSession: (data) => apiRequest('/agents/03/start', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  mlGetSession: (sessionId) => apiRequest(`/agents/03/session/${sessionId}`, {
+    method: 'GET',
+  }),
+  mlExecuteSession: (sessionId) => apiRequest('/agents/03/execute', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId }),
+  }),
   mlExport: (sessionId, format) => apiRequest(`/agents/03/${sessionId}/export/${format}`, {
     method: 'GET',
+  }),
+
+  // Settings
+  getUserSettings: () => apiRequest('/users/settings'),
+  updateUserSettings: (data) => apiRequest('/users/settings', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+
+  // Handoff
+  handoffToAgent01: (autopilotSessionId) => apiRequest(`/agents/01/handoff/${autopilotSessionId}`, {
+    method: 'POST',
+  }),
+
+  // Import URL
+  importDatasetFromUrl: (url) => apiRequest('/datasets/import-url', {
+    method: 'POST',
+    body: JSON.stringify({ url }),
   }),
 };

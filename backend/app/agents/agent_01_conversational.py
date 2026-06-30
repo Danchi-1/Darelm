@@ -16,6 +16,58 @@ class ChatRequest(BaseModel):
     dataset_id: Optional[str] = None
     session_id: Optional[str] = None
 
+@router.post("/handoff/{autopilot_session_id}")
+def handoff_from_autopilot(
+    autopilot_session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    from app.db.models import AutopilotSession
+    
+    # Get autopilot session
+    ap_session = db.query(AutopilotSession).filter(
+        AutopilotSession.id == autopilot_session_id, 
+        AutopilotSession.user_id == current_user.id
+    ).first()
+    
+    if not ap_session:
+        raise HTTPException(status_code=404, detail="Autopilot session not found")
+        
+    if not ap_session.report_json:
+        raise HTTPException(status_code=400, detail="Autopilot session has not completed a report yet")
+        
+    # Create new Chat Session
+    new_chat_session = ChatSession(
+        user_id=current_user.id,
+        dataset_id=ap_session.dataset_id,
+        title=f"Follow-up: {ap_session.goal[:40]}..."
+    )
+    db.add(new_chat_session)
+    db.flush()
+    
+    # Format the report nicely
+    report_data = json.loads(ap_session.report_json)
+    
+    content = f"**Autopilot Report Handoff**\n\nI have reviewed the report for your goal: *{ap_session.goal}*.\n\n"
+    content += f"**Executive Summary:**\n{report_data.get('executive_summary', '')}\n\n"
+    
+    if "sections" in report_data:
+        for section in report_data["sections"]:
+            content += f"**{section.get('title', '')}**\n{section.get('content', '')}\n\n"
+            
+    content += "What would you like to analyze further?"
+    
+    # Inject report as first agent message
+    initial_message = ChatMessage(
+        session_id=new_chat_session.id,
+        role="agent",
+        content=content
+    )
+    db.add(initial_message)
+    db.commit()
+    
+    return {"session_id": str(new_chat_session.id)}
+
 @router.post("/chat")
 async def chat_endpoint(
     request: ChatRequest,

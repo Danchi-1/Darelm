@@ -247,3 +247,21 @@ def delete_session(
     db.delete(session)
     db.commit()
     return None
+
+class SessionRenameRequest(BaseModel):
+    title: str
+
+@router.patch("/sessions/{session_id}")
+def rename_session(
+    session_id: str,
+    request: SessionRenameRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    session = db.query(ChatSession).filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    session.title = request.title
+    db.commit()
+    return {"message": "Success"}

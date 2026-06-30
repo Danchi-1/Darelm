@@ -317,7 +317,7 @@ export default function ConversationalChat() {
           </select>
           
           <h3 className="font-mono text-sm text-ink mb-3">Connected datasets</h3>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
             {datasets.map((dataset) => (
               <div 
                 key={dataset.id} 

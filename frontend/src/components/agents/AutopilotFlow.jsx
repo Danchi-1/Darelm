@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
@@ -9,6 +9,7 @@ import { api } from '../../lib/api';
 const phases = ['goal', 'planning', 'execution', 'report'];
 
 export default function AutopilotFlow() {
+  const navigate = useNavigate();
   const [phase, setPhase] = useState('goal');
   const [goal, setGoal] = useState('');
   const [selectedDatasetId, setSelectedDatasetId] = useState('');
@@ -393,7 +394,22 @@ export default function AutopilotFlow() {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 flex justify-between">
+              <Button 
+                variant="outline" 
+                size="md" 
+                onClick={async () => {
+                  try {
+                    const res = await api.handoffToAgent01(sessionId);
+                    navigate(`/session/${res.session_id}`);
+                  } catch (err) {
+                    console.error("Handoff failed", err);
+                    alert("Failed to handoff session to Agent 01");
+                  }
+                }}
+              >
+                💬 Chat with Agent 01 about this Report
+              </Button>
               <Button variant="primary" size="md" onClick={() => setPhase('goal')}>
                 Start new analysis
               </Button>

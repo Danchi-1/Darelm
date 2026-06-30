@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     
+    # CORS Origins
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+
     # Database
     # Using Postgres as requested. The Neon connection string should be provided here.
     SQLALCHEMY_DATABASE_URI: str = "postgresql://postgres:password@localhost/darelm"

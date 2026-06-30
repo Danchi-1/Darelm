@@ -29,7 +29,7 @@ class Dataset(Base):
     name = Column(String, nullable=False)
     dataset_type = Column(String, nullable=False) # 'CSV', 'Excel', 'PostgreSQL'
     size_bytes = Column(Integer, nullable=True) 
-    connection_string = Column(String, nullable=True) # For remote DBs
+    _connection_string_encrypted = Column('connection_string', String, nullable=True) # For remote DBs
     storage_url = Column(String, nullable=True) # For S3/Cloud storage URLs
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -37,6 +37,24 @@ class Dataset(Base):
     chat_sessions = relationship("ChatSession", back_populates="dataset", cascade="all, delete-orphan")
     autopilot_sessions = relationship("AutopilotSession", back_populates="dataset", cascade="all, delete-orphan")
     ml_sessions = relationship("MLExperimentSession", back_populates="dataset", cascade="all, delete-orphan")
+
+    @property
+    def connection_string(self):
+        if not self._connection_string_encrypted:
+            return None
+        from app.core.encryption import decrypt_data
+        try:
+            return decrypt_data(self._connection_string_encrypted)
+        except Exception:
+            return None
+
+    @connection_string.setter
+    def connection_string(self, value):
+        if value:
+            from app.core.encryption import encrypt_data
+            self._connection_string_encrypted = encrypt_data(value)
+        else:
+            self._connection_string_encrypted = None
 
 class ChatSession(Base):
     __tablename__ = "chat_sessions"

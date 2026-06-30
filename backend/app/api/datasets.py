@@ -76,6 +76,28 @@ async def upload_dataset(
         file_size = file.file.tell()
         file.file.seek(0)
         
+        # Enforce size limit (e.g., 50MB max)
+        MAX_FILE_SIZE = 50 * 1024 * 1024
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="File too large. Maximum size is 50MB.")
+            
+        # File signature validation using python-magic
+        import magic
+        mime_type = magic.from_buffer(file.file.read(2048), mime=True)
+        file.file.seek(0)
+        
+        allowed_mimes = [
+            'text/plain', 'text/csv', 'application/csv', 
+            'application/vnd.ms-excel', 
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ]
+        
+        if mime_type not in allowed_mimes:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid file content detected ({mime_type}). File must be a valid CSV or Excel document."
+            )
+        
         # Upload to OSS
         storage_url = await oss_manager.upload_file(file)
         
@@ -109,6 +131,26 @@ def connect_database(
     """
     Connect to a remote PostgreSQL database. We only store the connection string.
     """
+    import urllib.parse
+    import socket
+    import ipaddress
+    
+    # SSRF Protection: Parse connection string and resolve hostname
+    try:
+        parsed_url = urllib.parse.urlparse(payload.connection_string)
+        if not parsed_url.hostname:
+            raise ValueError("Invalid connection string format")
+            
+        ip = socket.gethostbyname(parsed_url.hostname)
+        ip_obj = ipaddress.ip_address(ip)
+        
+        if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local:
+            raise HTTPException(status_code=400, detail="Connections to private or local IP addresses are not permitted.")
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=400, detail=f"Invalid connection string or unresolvable hostname: {str(e)}")
+
     # 1. Test the connection first without saving it
     try:
         engine = create_engine(payload.connection_string, connect_args={"connect_timeout": 5})

@@ -184,3 +184,110 @@ def get_dataset_schema(
         
     columns = [{"name": col, "type": dtype} for col, dtype in schema_dict.items()]
     return {"columns": columns}
+
+from pydantic import BaseModel
+
+class ImportUrlRequest(BaseModel):
+    url: str
+
+@router.post("/import-url", response_model=DatasetResponse)
+async def import_url_dataset(
+    request: ImportUrlRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    import uuid
+    import httpx
+    from urllib.parse import urlparse
+    import os
+    
+    url = request.url
+    parsed = urlparse(url)
+    
+    # Simple extraction of filename
+    filename = os.path.basename(parsed.path)
+    if not filename:
+        filename = "imported_dataset.csv"
+        
+    dataset_type = "Excel" if filename.lower().endswith('.xlsx') else "CSV"
+    
+    unique_filename = f"{uuid.uuid4()}-{filename}"
+    upload_dir = "uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, unique_filename)
+    
+    # Check if Kaggle
+    if "kaggle.com" in url:
+        from app.core.encryption import decrypt_data
+        
+        username = current_user.encrypted_kaggle_username
+        key = current_user.encrypted_kaggle_key
+        
+        if not username or not key:
+            raise HTTPException(status_code=400, detail="Kaggle credentials not configured in settings")
+            
+        decrypted_username = decrypt_data(username)
+        decrypted_key = decrypt_data(key)
+        
+        os.environ["KAGGLE_USERNAME"] = decrypted_username
+        os.environ["KAGGLE_KEY"] = decrypted_key
+        
+        # Format: https://www.kaggle.com/datasets/zsinghrahulk/global-air-pollution-dataset
+        parts = parsed.path.strip('/').split('/')
+        if len(parts) >= 3 and parts[0] == "datasets":
+            dataset_ref = f"{parts[1]}/{parts[2]}"
+        else:
+            raise HTTPException(status_code=400, detail="Invalid Kaggle dataset URL format")
+            
+        try:
+            import kaggle
+            kaggle.api.authenticate()
+            # This downloads to the current working directory, into a folder named after the dataset
+            kaggle.api.dataset_download_files(dataset_ref, path=upload_dir, unzip=True)
+            
+            # Find the downloaded file (assuming it's a CSV or Excel)
+            # Kaggle unzips into the upload_dir directly
+            # To reliably find it, we check the directory contents sorted by creation time
+            # For a production app, we would use the kaggle API to list files first
+            downloaded_files = kaggle.api.dataset_list_files(dataset_ref).files
+            if not downloaded_files:
+                raise HTTPException(status_code=404, detail="No files found in Kaggle dataset")
+                
+            downloaded_file_name = str(downloaded_files[0].name)
+            original_path = os.path.join(upload_dir, downloaded_file_name)
+            os.rename(original_path, file_path)
+            filename = downloaded_file_name
+            dataset_type = "Excel" if filename.lower().endswith('.xlsx') else "CSV"
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Kaggle download failed: {str(e)}")
+    else:
+        # Standard Public URL download
+        try:
+            async with httpx.AsyncClient(follow_redirects=True) as client:
+                async with client.stream("GET", url) as response:
+                    response.raise_for_status()
+                    with open(file_path, "wb") as f:
+                        async for chunk in response.aiter_bytes(chunk_size=8192):
+                            f.write(chunk)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to download from URL: {str(e)}")
+            
+    # Save to DB
+    size_bytes = os.path.getsize(file_path)
+    new_dataset = Dataset(
+        user_id=current_user.id,
+        name=filename,
+        dataset_type=dataset_type,
+        size_bytes=size_bytes,
+        storage_url=f"local://{file_path}"
+    )
+    
+    db.add(new_dataset)
+    db.commit()
+    db.refresh(new_dataset)
+    
+    background_tasks.add_task(compress_dataset_background, new_dataset.storage_url)
+    
+    return new_dataset

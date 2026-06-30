@@ -21,6 +21,9 @@ export default function Datasets() {
   const [datasets, setDatasets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDbModal, setShowDbModal] = useState(false);
+  const [showUrlModal, setShowUrlModal] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState(null);
   const [datasetSchema, setDatasetSchema] = useState([]);
@@ -135,6 +138,27 @@ export default function Datasets() {
     }
   };
 
+  const handleImportUrl = async () => {
+    if (!importUrl) {
+      addToast('Please enter a URL', 'error');
+      return;
+    }
+    
+    setIsImporting(true);
+    try {
+      await api.importDatasetFromUrl(importUrl);
+      setShowUrlModal(false);
+      setImportUrl('');
+      await fetchDatasets();
+      addToast('Dataset imported successfully', 'success');
+    } catch (error) {
+      console.error('Import failed:', error);
+      addToast('Failed to import: ' + (error.detail || error.message), 'error');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleViewDataset = async (dataset) => {
     setSelectedDataset(dataset);
     setShowViewModal(true);
@@ -218,10 +242,13 @@ export default function Datasets() {
           </Button>
         </div>
 
-        {/* Database Connection Button */}
-        <div className="mb-8">
+        {/* Database Connection & URL Import Buttons */}
+        <div className="mb-8 flex gap-4">
           <Button variant="ghost" size="md" onClick={() => setShowDbModal(true)}>
             + Connect database
+          </Button>
+          <Button variant="ghost" size="md" onClick={() => setShowUrlModal(true)}>
+            + Import from URL (Kaggle/Public)
           </Button>
         </div>
 
@@ -271,6 +298,32 @@ export default function Datasets() {
               </Button>
               <Button variant="primary" size="md" onClick={handleTestConnection}>
                 Test connection
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* URL Import Modal */}
+        <Modal isOpen={showUrlModal} onClose={() => setShowUrlModal(false)}>
+          <h2 className="font-mono text-lg text-ink mb-4">Import from URL</h2>
+          <div className="space-y-4">
+            <p className="text-sm text-muted">
+              Paste a public URL to a CSV or Excel file (like a GitHub Raw link), or paste a Kaggle Dataset URL. 
+              Kaggle datasets require configuring your credentials in <Link to="/settings" className="text-signal hover:underline">Settings</Link> first.
+            </p>
+            <input
+              type="text"
+              placeholder="https://..."
+              value={importUrl}
+              onChange={(e) => setImportUrl(e.target.value)}
+              className="w-full bg-surface-raised border border-border rounded-input h-11 px-4 text-ink focus:border-signal focus:outline-none transition-colors"
+            />
+            <div className="flex gap-3 justify-end">
+              <Button variant="ghost" size="md" onClick={() => setShowUrlModal(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" size="md" onClick={handleImportUrl} disabled={!importUrl || isImporting}>
+                {isImporting ? 'Importing...' : 'Import Dataset'}
               </Button>
             </div>
           </div>

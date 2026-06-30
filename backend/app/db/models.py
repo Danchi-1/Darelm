@@ -12,10 +12,13 @@ class User(Base):
     hashed_password = Column(String, nullable=True) # Nullable because of Google Auth
     is_verified = Column(Boolean, default=False)
     google_id = Column(String, unique=True, index=True, nullable=True)
+    encrypted_kaggle_username = Column(String, nullable=True)
+    encrypted_kaggle_key = Column(String, nullable=True)
 
     datasets = relationship("Dataset", back_populates="owner", cascade="all, delete-orphan")
     chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
     autopilot_sessions = relationship("AutopilotSession", back_populates="user", cascade="all, delete-orphan")
+    ml_sessions = relationship("MLExperimentSession", back_populates="user", cascade="all, delete-orphan")
 
 
 class Dataset(Base):
@@ -33,6 +36,7 @@ class Dataset(Base):
     owner = relationship("User", back_populates="datasets")
     chat_sessions = relationship("ChatSession", back_populates="dataset", cascade="all, delete-orphan")
     autopilot_sessions = relationship("AutopilotSession", back_populates="dataset", cascade="all, delete-orphan")
+    ml_sessions = relationship("MLExperimentSession", back_populates="dataset", cascade="all, delete-orphan")
 
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
@@ -93,3 +97,20 @@ class AutopilotStep(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     session = relationship("AutopilotSession", back_populates="steps")
+
+class MLExperimentSession(Base):
+    __tablename__ = "ml_experiment_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True)
+    hypothesis = Column(String, nullable=False)
+    plan_json = Column(String, nullable=True) # JSON string
+    status = Column(String, nullable=False, default="planning") # planning, executing, completed, partial, failed
+    findings_json = Column(String, nullable=True) # JSON string array
+    report_json = Column(String, nullable=True) # JSON string
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="ml_sessions")
+    dataset = relationship("Dataset", back_populates="ml_sessions")

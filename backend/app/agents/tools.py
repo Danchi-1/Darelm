@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 from app.db.models import Dataset
 from app.core.config import settings
 
+from app.core.oss import oss_manager
+
 def get_dataset_context(dataset_id: str, db: Session) -> dict:
     """
     Reads the dataset from the database and extracts the schema and sample rows using pandas.
@@ -13,12 +15,16 @@ def get_dataset_context(dataset_id: str, db: Session) -> dict:
     dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
     if not dataset:
         return {"error": "Dataset not found"}
+        
+    storage_url = dataset.storage_url
+    if storage_url and storage_url.startswith("oss://"):
+        storage_url = oss_manager.generate_presigned_url(storage_url)
 
     result = {
         "dataset_name": dataset.name,
         "dataset_type": dataset.dataset_type,
         "size_bytes": dataset.size_bytes,
-        "url_or_connection": dataset.storage_url or dataset.connection_string,
+        "url_or_connection": storage_url or dataset.connection_string,
         "schema": None,
         "sample": None
     }

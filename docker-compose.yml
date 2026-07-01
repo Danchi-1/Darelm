@@ -7,14 +7,14 @@ services:
       dockerfile: Dockerfile
     environment:
       # Inject the variables here or via a .env file on the ECS VM
-      - SQLALCHEMY_DATABASE_URI=${SQLALCHEMY_DATABASE_URI}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - SECRET_KEY=${SECRET_KEY}
-      - MAIL_USERNAME=${MAIL_USERNAME}
-      - MAIL_PASSWORD=${MAIL_PASSWORD}
-      - MAIL_FROM=${MAIL_FROM}
-      - E2B_API_KEY=${E2B_API_KEY}
-      - CORS_ORIGINS=${CORS_ORIGINS}
+      - SQLALCHEMY_DATABASE_URI=${SQLALCHEMY_DATABASE_URI:-sqlite:///./test.db}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - SECRET_KEY=${SECRET_KEY:-super-secret-key}
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_FROM=${MAIL_FROM:-}
+      - E2B_API_KEY=${E2B_API_KEY:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-["http://localhost:5173", "http://localhost", "http://127.0.0.1"]}
     restart: unless-stopped
     expose:
       - "8000"

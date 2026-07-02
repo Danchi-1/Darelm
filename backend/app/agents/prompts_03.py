@@ -142,6 +142,7 @@ OUTPUT FORMAT — valid JSON only:
   "what_was_completed": ["List of essential steps that finished"],
   "what_was_skipped": ["List of steps not reached due to time, if any"],
   "conclusions": ["Specific, evidence-based findings from what was actually computed"],
+  "final_python_script": "The complete, raw Python training script that achieved the best result. Provide ONLY the code, no markdown fences.",
   "limitations": ["Honest statement of time constraints and what a longer budget would allow"],
   "recommendations": ["What the user could do next — e.g. re-run with more time for hyperparameter tuning, try a different algorithm"]
 }
@@ -156,5 +157,7 @@ SYNTHESIS RULES:
 
 3. FRAME PARTIAL RESULTS AS USEFUL, NOT AS FAILURE. A baseline model with basic metrics, even without tuning, is a legitimate starting point. Communicate it that way.
 
-4. THE LIMITATIONS SECTION MUST EXPLAIN THE TIME CONSTRAINT CLEARLY. State what additional time would likely improve — e.g. "Hyperparameter tuning was not performed due to the time budget; a tuned model would likely improve F1 score beyond the baseline reported here."
+4. YOU MUST INCLUDE THE WINNING CODE. The `final_python_script` field is essential for the user. Synthesize the steps taken into one clean, runnable script.
+
+5. THE LIMITATIONS SECTION MUST EXPLAIN THE TIME CONSTRAINT CLEARLY. State what additional time would likely improve — e.g. "Hyperparameter tuning was not performed due to the time budget; a tuned model would likely improve F1 score beyond the baseline reported here."
 """

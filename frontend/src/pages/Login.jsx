@@ -10,12 +10,15 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLoading) return;
     setError(null);
+    setIsLoading(true);
     try {
       await api.login({ email, password });
       const user = await api.getCurrentUser();
@@ -23,6 +26,8 @@ export default function Login() {
       navigate('/dashboard');
     } catch (error) {
       setError(error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -109,8 +114,8 @@ export default function Login() {
               </Link>
             </div>
 
-            <Button type="submit" variant="primary" size="md" className="w-full">
-              Sign in
+            <Button type="submit" variant="primary" size="md" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
 

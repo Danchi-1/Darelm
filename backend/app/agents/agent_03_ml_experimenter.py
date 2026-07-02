@@ -220,7 +220,8 @@ async def execute_ml_experiment(
                     }
                 }]
                 
-                max_steps = 15
+                # Execute ReAct Loop (Up to 25 reasoning steps)
+                max_steps = 25
                 for step in range(max_steps):
                     response = await qwen_client.chat_completion(
                         messages=messages,

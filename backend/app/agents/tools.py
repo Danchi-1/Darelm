@@ -70,7 +70,7 @@ def execute_python_sandbox(code: str, dataset_path: str = None, sandbox_filename
     os.environ["E2B_API_KEY"] = settings.E2B_API_KEY
 
     try:
-        with Sandbox.create() as sandbox:
+        with Sandbox.create(timeout=300) as sandbox:
             if dataset_path and sandbox_filename and not dataset_path.startswith("http"):
                 try:
                     if dataset_path.startswith("local://"):
@@ -117,11 +117,20 @@ def execute_python_sandbox(code: str, dataset_path: str = None, sandbox_filename
             
             output = ""
             if execution.logs.stdout:
-                output += "STDOUT:\n" + "\n".join(execution.logs.stdout) + "\n"
+                stdout_str = "\n".join(execution.logs.stdout)
+                if len(stdout_str) > 1000:
+                    stdout_str = stdout_str[:1000] + "\n...[TRUNCATED FOR LENGTH]"
+                output += "STDOUT:\n" + stdout_str + "\n"
             if execution.logs.stderr:
-                output += "STDERR:\n" + "\n".join(execution.logs.stderr) + "\n"
+                stderr_str = "\n".join(execution.logs.stderr)
+                if len(stderr_str) > 1000:
+                    stderr_str = stderr_str[:1000] + "\n...[TRUNCATED FOR LENGTH]"
+                output += "STDERR:\n" + stderr_str + "\n"
             if execution.error:
-                output += "ERROR:\n" + execution.error.name + ": " + execution.error.value
+                error_str = execution.error.name + ": " + execution.error.value
+                if len(error_str) > 1000:
+                    error_str = error_str[:1000] + "\n...[TRUNCATED FOR LENGTH]"
+                output += "ERROR:\n" + error_str
                 
             return output if output else "Execution successful. No output."
     except Exception as e:

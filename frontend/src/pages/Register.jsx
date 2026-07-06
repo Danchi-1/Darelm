@@ -15,6 +15,7 @@ export default function Register() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('info');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
 
@@ -27,16 +28,20 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLoading) return;
     if (password !== confirmPassword) {
       showToastNotification('Passwords do not match', 'error');
       return;
     }
+    setIsLoading(true);
     try {
       const response = await api.register({ name, email, password });
       showToastNotification('Please check your email to verify your account', 'info');
       // Don't auto-login, wait for email verification
     } catch (error) {
       showToastNotification(error.message || 'Registration failed', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -138,8 +143,8 @@ export default function Register() {
               />
             </div>
 
-            <Button type="submit" variant="primary" size="md" className="w-full">
-              Create account
+            <Button type="submit" variant="primary" size="md" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Creating account...' : 'Create account'}
             </Button>
           </form>
 

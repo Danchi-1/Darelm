@@ -8,10 +8,9 @@ ENV PYTHONPATH=/app
 # Set work directory
 WORKDIR /app
 
-# Install system dependencies (needed for psycopg2 and other native extensions)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
+# Install system dependencies (libmagic is required by python-magic for file validation)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies
@@ -24,5 +23,5 @@ COPY . .
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application using Gunicorn with Uvicorn workers for production stability
+CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--timeout", "360"]

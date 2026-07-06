@@ -1,18 +1,29 @@
-version: '3.8'
 
 services:
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
     environment:
       # Inject the variables here or via a .env file on the ECS VM
-      - SQLALCHEMY_DATABASE_URI=${SQLALCHEMY_DATABASE_URI}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - SECRET_KEY=${SECRET_KEY}
-      - MAIL_USERNAME=${MAIL_USERNAME}
-      - MAIL_PASSWORD=${MAIL_PASSWORD}
-      - MAIL_FROM=${MAIL_FROM}
+      - SQLALCHEMY_DATABASE_URI=${SQLALCHEMY_DATABASE_URI:-sqlite:///./test.db}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - SECRET_KEY=${SECRET_KEY:-super-secret-key}
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_FROM=${MAIL_FROM:-}
+      - E2B_API_KEY=${E2B_API_KEY:-}
+
+    restart: unless-stopped
+    expose:
+      - "8000"
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
     restart: unless-stopped

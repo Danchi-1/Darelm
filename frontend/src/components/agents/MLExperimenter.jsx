@@ -343,6 +343,18 @@ export default function MLExperimenter() {
                   </ul>
                 </div>
               </div>
+
+              {reportData.final_python_script && (
+                <div className="bg-surface border border-border rounded-card p-6 mt-6">
+                  <h3 className="font-mono text-lg text-ink mb-4">Final Winning Code</h3>
+                  <p className="text-muted text-sm leading-relaxed mb-4">
+                    The agent synthesized the steps taken into the following runnable Python script. You can copy this code and run it in your own environment to replicate the model.
+                  </p>
+                  <pre className="bg-void p-4 rounded-card text-signal overflow-x-auto text-sm font-mono border border-border">
+                    <code>{reportData.final_python_script}</code>
+                  </pre>
+                </div>
+              )}
             </div>
 
             <div className="mt-8 flex justify-end">

@@ -432,7 +432,7 @@ export default function ConversationalChat() {
                     )}
                     
                     {/* Final Response */}
-                    <div className="text-ink text-sm w-full overflow-hidden markdown-body">
+                    <div className="text-ink text-sm w-full overflow-hidden prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-surface-raised prose-td:border-border prose-th:border-border prose-th:bg-surface-raised">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {message.content}
                       </ReactMarkdown>

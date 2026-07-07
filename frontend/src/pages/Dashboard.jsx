@@ -45,21 +45,32 @@ export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const userName = user?.name || user?.email?.split('@')[0] || 'User';
   const [sessions, setSessions] = useState([]);
+  const [stats, setStats] = useState({ datasets: 0, sessions: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchSessions = async () => {
+    const fetchData = async () => {
       try {
-        const data = await api.getSessions();
-        setSessions(data);
+        const [datasetsRes, sessions01, sessions02, sessions03] = await Promise.all([
+          api.getDatasets(),
+          api.getSessions(),
+          api.getAutopilotSessions(),
+          api.getMLSessions()
+        ]);
+        
+        setSessions(sessions01);
+        setStats({
+          datasets: datasetsRes.length,
+          sessions: sessions01.length + sessions02.length + sessions03.length
+        });
       } catch (error) {
-        console.error('Failed to fetch sessions:', error);
+        console.error('Failed to fetch dashboard data:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchSessions();
+    fetchData();
   }, []);
 
   return (
@@ -70,6 +81,25 @@ export default function Dashboard() {
             {getGreeting()}, {userName}.
           </h1>
           <p className="text-muted">What do you want to do?</p>
+        </div>
+
+        {/* Analytics Widgets */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 w-full max-w-4xl mx-auto">
+          <div className="bg-surface border border-border rounded-card p-6 flex flex-col justify-center items-center relative overflow-hidden group hover:border-signal transition-colors">
+            <div className="absolute inset-0 bg-signal/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <span className="text-muted text-sm font-mono mb-2">Connected Datasets</span>
+            <span className="text-4xl text-ink font-mono">{isLoading ? '-' : stats.datasets}</span>
+          </div>
+          <div className="bg-surface border border-border rounded-card p-6 flex flex-col justify-center items-center relative overflow-hidden group hover:border-signal transition-colors">
+            <div className="absolute inset-0 bg-signal/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <span className="text-muted text-sm font-mono mb-2">AI Sessions Run</span>
+            <span className="text-4xl text-ink font-mono">{isLoading ? '-' : stats.sessions}</span>
+          </div>
+          <div className="bg-surface border border-border rounded-card p-6 flex flex-col justify-center items-center relative overflow-hidden group hover:border-signal transition-colors">
+            <div className="absolute inset-0 bg-signal/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <span className="text-muted text-sm font-mono mb-2">Active Agents</span>
+            <span className="text-4xl text-signal font-mono">3</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12 w-full max-w-4xl mx-auto">

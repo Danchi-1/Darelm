@@ -140,4 +140,7 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ url }),
   }),
+  loadSampleDataset: () => apiRequest('/datasets/sample', {
+    method: 'POST',
+  }),
 };

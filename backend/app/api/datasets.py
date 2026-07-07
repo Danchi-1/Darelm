@@ -232,6 +232,16 @@ from pydantic import BaseModel
 class ImportUrlRequest(BaseModel):
     url: str
 
+@router.post("/sample", response_model=DatasetResponse)
+async def load_sample_dataset(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    req = ImportUrlRequest(url="https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv")
+    return await import_url_dataset(request=req, background_tasks=background_tasks, db=db, current_user=current_user)
+
+
 @router.post("/import-url", response_model=DatasetResponse)
 async def import_url_dataset(
     request: ImportUrlRequest,

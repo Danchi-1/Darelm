@@ -8,6 +8,8 @@ import Dashboard from './pages/Dashboard';
 import Session from './pages/Session';
 import Datasets from './pages/Datasets';
 import Settings from './pages/Settings';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 import ToastContainer from './components/ui/ToastContainer';
 import { useAuthStore } from './store/authStore';
 
@@ -60,6 +62,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
         <Route
           path="/dashboard"
           element={

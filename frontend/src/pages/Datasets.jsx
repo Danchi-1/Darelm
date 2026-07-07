@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Database } from 'lucide-react';
 import AppLayout from '../components/layout/AppLayout';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -24,6 +25,7 @@ export default function Datasets() {
   const [showUrlModal, setShowUrlModal] = useState(false);
   const [importUrl, setImportUrl] = useState("");
   const [isImporting, setIsImporting] = useState(false);
+  const [isImportingSample, setIsImportingSample] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState(null);
   const [datasetSchema, setDatasetSchema] = useState([]);
@@ -159,6 +161,20 @@ export default function Datasets() {
     }
   };
 
+  const handleLoadSample = async () => {
+    setIsImportingSample(true);
+    try {
+      await api.loadSampleDataset();
+      await fetchDatasets();
+      addToast('Sample dataset (Titanic) loaded successfully', 'success');
+    } catch (error) {
+      console.error('Failed to load sample:', error);
+      addToast('Failed to load sample: ' + (error.detail || error.message), 'error');
+    } finally {
+      setIsImportingSample(false);
+    }
+  };
+
   const handleViewDataset = async (dataset) => {
     setSelectedDataset(dataset);
     setShowViewModal(true);
@@ -273,8 +289,17 @@ export default function Datasets() {
         ) : datasets.length > 0 ? (
           <Table columns={columns} data={tableData} />
         ) : (
-          <div className="bg-surface border border-border rounded-card p-8 text-center text-muted">
-            No datasets yet. Upload one to get started.
+          <div className="bg-surface border border-border rounded-card p-12 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 bg-surface-raised rounded-full flex items-center justify-center mb-4 border border-border">
+              <Database className="text-muted" size={24} />
+            </div>
+            <h3 className="font-mono text-lg text-ink mb-2">No datasets found</h3>
+            <p className="text-muted text-sm max-w-sm mb-6">
+              Upload your own data or connect a database. Don't have data on hand?
+            </p>
+            <Button variant="primary" size="md" onClick={handleLoadSample} disabled={isImportingSample}>
+              {isImportingSample ? 'Loading...' : 'Load Sample Dataset (Titanic)'}
+            </Button>
           </div>
         )}
 

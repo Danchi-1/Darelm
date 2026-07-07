@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, ChevronDown, ChevronRight, Loader2, CheckCircle, XCircle, Zap } from 'lucide-react';
+import { Send, ChevronDown, ChevronRight, Loader2, CheckCircle, XCircle, Zap, Database } from 'lucide-react';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import Skeleton from '../ui/Skeleton';
@@ -19,6 +19,7 @@ export default function ConversationalChat() {
   const [schema, setSchema] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [showThoughts, setShowThoughts] = useState(true);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const messagesEndRef = useRef(null);
   const addToast = useToastStore((state) => state.addToast);
   const { id: sessionId } = useParams();
@@ -297,9 +298,9 @@ export default function ConversationalChat() {
   };
 
   return (
-    <div className="flex h-screen bg-void">
+    <div className="flex flex-col md:flex-row h-screen bg-void overflow-hidden">
       {/* Left Panel - Data Context */}
-      <div className="w-72 bg-surface border-r border-border flex flex-col">
+      <div className={`${showMobileSidebar ? 'flex' : 'hidden'} md:flex w-full md:w-72 bg-surface border-b md:border-b-0 md:border-r border-border flex-col flex-none max-h-[50vh] md:max-h-none overflow-y-auto z-10`}>
         <div className="p-4 border-b border-border">
           <h3 className="font-mono text-sm text-ink mb-3">Select dataset</h3>
           <select
@@ -368,7 +369,18 @@ export default function ConversationalChat() {
       </div>
 
       {/* Center Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0 relative">
+        {/* Mobile Header Toggle */}
+        <div className="md:hidden flex items-center justify-between p-4 border-b border-border bg-surface">
+          <span className="font-mono text-sm text-ink">Conversational Analyst</span>
+          <button 
+            onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+            className={`p-2 rounded-btn flex items-center gap-2 text-xs font-mono transition-colors ${showMobileSidebar ? 'bg-signal text-void' : 'bg-surface-raised text-ink border border-border hover:border-signal'}`}
+          >
+            <Database size={14} />
+            {showMobileSidebar ? 'Hide Data' : 'Select Data'}
+          </button>
+        </div>
         <div className="flex-1 overflow-y-auto p-6">
           {messages.map((message, index) => (
             <div
@@ -420,7 +432,7 @@ export default function ConversationalChat() {
                     )}
                     
                     {/* Final Response */}
-                    <div className="text-ink text-sm w-full overflow-hidden markdown-body">
+                    <div className="text-ink text-sm w-full overflow-hidden prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-surface-raised prose-td:border-border prose-th:border-border prose-th:bg-surface-raised">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {message.content}
                       </ReactMarkdown>

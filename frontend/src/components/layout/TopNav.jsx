@@ -30,18 +30,7 @@ export default function TopNav() {
         >
           Agents
         </button>
-        <button
-          onClick={() => scrollToSection('how-it-works')}
-          className="text-sm text-muted hover:text-ink transition-colors"
-        >
-          How it works
-        </button>
-        <button
-          onClick={() => scrollToSection('qwen')}
-          className="text-sm text-muted hover:text-ink transition-colors"
-        >
-          Docs
-        </button>
+
         {!isAuthenticated ? (
           <>
             <Link to="/login" className="text-sm text-muted hover:text-ink transition-colors">
@@ -80,18 +69,7 @@ export default function TopNav() {
             >
               Agents
             </button>
-            <button
-              onClick={() => scrollToSection('how-it-works')}
-              className="text-sm text-ink hover:text-signal transition-colors text-left"
-            >
-              How it works
-            </button>
-            <button
-              onClick={() => scrollToSection('qwen')}
-              className="text-sm text-ink hover:text-signal transition-colors text-left"
-            >
-              Docs
-            </button>
+
             {!isAuthenticated ? (
               <>
                 <Link

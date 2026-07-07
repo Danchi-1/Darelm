@@ -22,6 +22,7 @@ export default function AutopilotFlow() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [executingMessage, setExecutingMessage] = useState('');
   const [userFeedback, setUserFeedback] = useState('');
+  const [fullScreenImage, setFullScreenImage] = useState(null);
   const addToast = useToastStore((state) => state.addToast);
   const { id } = useParams();
 
@@ -323,13 +324,7 @@ export default function AutopilotFlow() {
               <h2 className="font-mono text-2xl text-ink">{reportData.title || 'Analysis Report'}</h2>
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" onClick={() => handleExport('pdf')}>
-                  PDF
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleExport('csv')}>
-                  CSV
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleExport('json')}>
-                  JSON
+                  Export PDF
                 </Button>
               </div>
             </div>
@@ -356,14 +351,14 @@ export default function AutopilotFlow() {
                   <p className="text-muted mb-6 leading-relaxed">{section.narrative}</p>
                   
                   {section.chart_base64 && (
-                    <div className="mt-4 rounded-card overflow-hidden border border-border bg-surface-raised p-2">
+                    <div className="mt-4 rounded-card overflow-hidden border border-border bg-surface-raised p-2 cursor-pointer transition-colors hover:border-signal" onClick={() => setFullScreenImage(section.chart_base64)} title="Click to enlarge">
                       <img src={section.chart_base64} alt={`Chart for ${section.heading}`} className="w-full h-auto object-contain max-h-96" />
                     </div>
                   )}
                 </div>
               ))}
               
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {reportData.conclusions && reportData.conclusions.length > 0 && (
                   <div className="bg-surface border border-border rounded-card p-6">
                     <h3 className="font-mono text-lg text-ink mb-4">Conclusions</h3>
@@ -433,6 +428,18 @@ export default function AutopilotFlow() {
           {renderPhase()}
         </motion.div>
       </AnimatePresence>
+
+      {fullScreenImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-void/95 flex items-center justify-center p-4 cursor-zoom-out" 
+          onClick={() => setFullScreenImage(null)}
+        >
+          <img src={fullScreenImage} className="max-w-full max-h-full object-contain rounded" />
+          <button className="absolute top-6 right-6 text-muted hover:text-white bg-surface w-10 h-10 flex items-center justify-center rounded-full border border-border">
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }

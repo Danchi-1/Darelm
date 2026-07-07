@@ -221,7 +221,7 @@ export default function MLExperimenter() {
             <h2 className="font-mono text-2xl text-ink mb-2">Feasibility Plan</h2>
             <p className="text-muted mb-6">The agent has planned the following approach within the 5-minute budget.</p>
             
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="bg-surface border border-border rounded-card p-4">
                 <span className="text-xs text-muted block mb-1">Task Type</span>
                 <span className="font-mono text-signal">{planData.ml_task_type}</span>
@@ -329,7 +329,7 @@ export default function MLExperimenter() {
                 </div>
               ))}
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-surface border border-border rounded-card p-6">
                   <h3 className="font-mono text-sm text-ink mb-3 uppercase tracking-wider">Limitations</h3>
                   <ul className="list-disc pl-5 space-y-1 text-sm text-muted">

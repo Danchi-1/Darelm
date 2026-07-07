@@ -56,6 +56,26 @@ def get_dataset_context(dataset_id: str, db: Session) -> dict:
         except Exception as e:
             result["error_loading_schema"] = str(e)
             
+    elif dataset.dataset_type.lower() == "postgresql" and dataset.connection_string:
+        from sqlalchemy import create_engine, inspect
+        try:
+            engine = create_engine(dataset.connection_string, connect_args={"connect_timeout": 5})
+            inspector = inspect(engine)
+            
+            schema_dict = {}
+            # Limit to 50 tables to avoid massive payloads
+            tables = inspector.get_table_names()[:50]
+            
+            for table_name in tables:
+                columns = inspector.get_columns(table_name)
+                # Format: table_name.column_name: type
+                for col in columns:
+                    schema_dict[f"{table_name}.{col['name']}"] = str(col['type'])
+                    
+            result["schema"] = schema_dict
+        except Exception as e:
+            result["error_loading_schema"] = f"Failed to extract DB schema: {str(e)}"
+            
     return result
 
 def execute_python_sandbox(code: str, dataset_path: str = None, sandbox_filename: str = None) -> str:

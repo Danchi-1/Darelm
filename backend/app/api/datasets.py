@@ -298,6 +298,22 @@ async def import_url_dataset(
                 
             downloaded_file_name = str(downloaded_files[0].name)
             original_path = os.path.join(upload_dir, downloaded_file_name)
+            
+            # Fix: Kaggle sometimes unzips into a subfolder. Scan recursively if not found.
+            if not os.path.exists(original_path):
+                found = False
+                for root, dirs, files in os.walk(upload_dir):
+                    for file in files:
+                        if file.endswith(('.csv', '.xlsx', '.xls')):
+                            original_path = os.path.join(root, file)
+                            downloaded_file_name = file
+                            found = True
+                            break
+                    if found:
+                        break
+                if not found:
+                    raise HTTPException(status_code=404, detail="No CSV/Excel files found in the extracted Kaggle dataset.")
+                    
             os.rename(original_path, file_path)
             filename = downloaded_file_name
             dataset_type = "Excel" if filename.lower().endswith('.xlsx') else "CSV"

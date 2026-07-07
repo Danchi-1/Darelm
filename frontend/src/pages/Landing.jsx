@@ -89,6 +89,7 @@ function WorkingProof() {
   // Calculate which agent is active based on scroll (0, 1, or 2)
   const activeIndex = useTransform(scrollYProgress, [0, 0.33, 0.66, 1], [0, 1, 2, 2]);
   const [currentIdx, setCurrentIdx] = useState(0);
+  const [fullScreenImage, setFullScreenImage] = useState(null);
 
   useEffect(() => {
     return activeIndex.onChange((v) => {
@@ -99,18 +100,18 @@ function WorkingProof() {
   const proofData = [
     {
       agent: "Conversational Analyst",
-      qImg: "/assets/proof/agent1-question.webp",
-      rImg: "/assets/proof/agent1-reply.webp",
+      qImg: "/assets/proof/agent1-question.png",
+      rImg: "/assets/proof/agent1-reply.png",
     },
     {
       agent: "Autopilot Analyst",
-      qImg: "/assets/proof/agent2-question.webp",
-      rImg: "/assets/proof/agent2-reply.webp",
+      qImg: "/assets/proof/agent2-question.png",
+      rImg: "/assets/proof/agent2-reply.png",
     },
     {
       agent: "ML Experimenter",
-      qImg: "/assets/proof/agent3-question.webp",
-      rImg: "/assets/proof/agent3-reply.webp",
+      qImg: "/assets/proof/agent3-question.png",
+      rImg: "/assets/proof/agent3-reply.png",
     }
   ];
 
@@ -150,7 +151,8 @@ function WorkingProof() {
                         alt={`Question for ${data.agent}`} 
                         loading="lazy" 
                         decoding="async" 
-                        className="w-full h-full object-cover absolute inset-0 z-10" 
+                        className="w-full h-full object-cover absolute inset-0 z-10 cursor-pointer transition-transform hover:scale-105" 
+                        onClick={() => setFullScreenImage(data.qImg)}
                         onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} 
                        />
                        <div className="text-muted/50 font-mono text-sm hidden absolute inset-0 flex-col items-center justify-center z-0">
@@ -185,7 +187,8 @@ function WorkingProof() {
                         alt={`Reply from ${data.agent}`} 
                         loading="lazy" 
                         decoding="async" 
-                        className="w-full h-full object-cover absolute inset-0 z-10" 
+                        className="w-full h-full object-cover absolute inset-0 z-10 cursor-pointer transition-transform hover:scale-105" 
+                        onClick={() => setFullScreenImage(data.rImg)}
                         onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} 
                       />
                       <div className="text-muted/50 font-mono text-sm hidden absolute inset-0 flex-col items-center justify-center z-0">
@@ -215,6 +218,18 @@ function WorkingProof() {
 
         </div>
       </div>
+
+      {fullScreenImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-void/95 flex items-center justify-center p-4 cursor-zoom-out" 
+          onClick={() => setFullScreenImage(null)}
+        >
+          <img src={fullScreenImage} className="max-w-full max-h-full object-contain rounded" />
+          <button className="absolute top-6 right-6 text-muted hover:text-white bg-surface w-10 h-10 flex items-center justify-center rounded-full border border-border">
+            ✕
+          </button>
+        </div>
+      )}
     </section>
   );
 }
@@ -298,7 +313,7 @@ export default function Landing() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
-              className="font-mono text-6xl md:text-7xl lg:text-8xl text-ink text-center leading-tight mb-6 tracking-tighter"
+              className="font-mono text-5xl md:text-6xl lg:text-7xl text-ink text-center leading-tight mb-6 tracking-tighter"
             >
               Your data.<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-signal via-blue-400 to-signal">Fully understood.</span>
@@ -330,7 +345,7 @@ export default function Landing() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.6, ease: 'easeOut' }}
-              className="absolute bottom-12 flex flex-col items-center gap-2"
+              className="mt-16 flex flex-col items-center gap-2"
             >
               <span className="text-muted text-sm font-mono tracking-widest uppercase text-xs">Scroll to explore</span>
               <div className="w-px h-12 bg-gradient-to-b from-signal/50 to-transparent" />

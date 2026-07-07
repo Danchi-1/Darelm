@@ -235,8 +235,8 @@ function BentoGrid() {
           <div className="md:col-span-2 md:row-span-2 bg-surface/40 backdrop-blur border border-white/10 rounded-2xl p-8 flex flex-col justify-end relative overflow-hidden group hover:bg-surface/60 transition-colors">
             <div className="absolute inset-0 bg-gradient-to-br from-signal/5 to-transparent pointer-events-none" />
             <div className="absolute top-8 right-8 w-24 h-24 bg-signal/20 rounded-full blur-2xl group-hover:bg-signal/40 transition-colors duration-500" />
-            <h3 className="font-mono text-2xl text-ink mb-2">Isolated Python Sandbox</h3>
-            <p className="text-muted max-w-md">Every AI operation runs in a secure, ephemeral E2B sandbox environment. No risks to your underlying infrastructure.</p>
+            <h3 className="font-mono text-2xl text-ink mb-2">Enterprise-Grade Security</h3>
+            <p className="text-muted max-w-md">Your data is processed in isolated, ephemeral environments ensuring complete privacy, zero data leakage, and absolutely no risks to your underlying infrastructure.</p>
           </div>
 
           {/* Medium Card */}
@@ -292,15 +292,7 @@ export default function Landing() {
         <div className="relative z-10">
           <TopNav />
           <div className="max-w-6xl mx-auto px-6 pt-24 pb-12 flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-8"
-            >
-              <span className="w-2 h-2 rounded-full bg-signal animate-pulse" />
-              <span className="font-mono text-signal text-xs tracking-[0.1em] uppercase">Darelm Intelligence Engine V1.0</span>
-            </motion.div>
+
             
             <motion.h1
               initial={{ opacity: 0, y: 12 }}

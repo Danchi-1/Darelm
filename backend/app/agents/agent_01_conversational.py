@@ -109,7 +109,17 @@ Provide your reasoning process if needed, but end with a clear Answer."""
             raise HTTPException(status_code=404, detail="Session not found")
     else:
         # Generate a short title from the first message
-        title = request.message[:50] + "..." if len(request.message) > 50 else request.message
+        title_prompt = f"Generate a concise 3 to 4 word title for this data analysis query: '{request.message}'. Do not use quotes, periods, or the word 'title'."
+        try:
+            title_res = await qwen_client.chat_completion(
+                messages=[{"role": "user", "content": title_prompt}],
+                tier="fast"
+            )
+            title = title_res.choices[0].message.content.strip().strip('"').strip("'")
+            if len(title) > 50:
+                title = title[:50]
+        except Exception:
+            title = request.message[:50] + "..." if len(request.message) > 50 else request.message
         session = ChatSession(user_id=current_user.id, dataset_id=request.dataset_id, title=title)
         db.add(session)
         db.commit()

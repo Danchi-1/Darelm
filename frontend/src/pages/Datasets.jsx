@@ -77,14 +77,43 @@ export default function Datasets() {
       return;
     }
     
-    const formData = new FormData();
-    formData.append('file', file);
-    
     setIsLoading(true);
+    addToast('Initializing upload...', 'info');
     try {
-      await api.uploadDataset(formData);
+      const { upload_url, object_key, fallback_local } = await api.getPresignedUrl({
+        filename: file.name,
+        file_size: file.size,
+        content_type: file.type || 'application/octet-stream'
+      });
+
+      if (fallback_local) {
+        const formData = new FormData();
+        formData.append('file', file);
+        await api.uploadDataset(formData);
+      } else {
+        addToast('Uploading directly to cloud storage...', 'info');
+        const uploadResponse = await fetch(upload_url, {
+          method: 'PUT',
+          body: file,
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream'
+          }
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Failed to upload to OSS: ${uploadResponse.statusText}`);
+        }
+
+        addToast('Finalizing dataset...', 'info');
+        await api.confirmUpload({
+          object_key: object_key,
+          filename: file.name,
+          file_size: file.size
+        });
+      }
+
       await fetchDatasets();
-      addToast('Dataset uploaded successfully', 'success');
+      addToast('Dataset uploaded successfully!', 'success');
     } catch (error) {
       console.error('Upload failed:', error);
       addToast('Failed to upload dataset: ' + error.message, 'error');

@@ -49,4 +49,10 @@ class OSSManager:
             return self.bucket.sign_url('GET', object_key, expires_in_seconds)
         return storage_url
 
+    def generate_presigned_upload_url(self, object_key: str, expires_in_seconds: int = 3600) -> str:
+        """Generates a short-lived presigned URL for secure frontend upload."""
+        if self.enabled:
+            return self.bucket.sign_url('PUT', object_key, expires_in_seconds)
+        return ""
+
 oss_manager = OSSManager()

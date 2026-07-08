@@ -62,9 +62,9 @@ export const api = {
   getCurrentUser: () => apiRequest('/users/me', { method: 'GET' }),
 
   // Sessions
-  getSessions: () => apiRequest('/agents/01/sessions'),
+  getSessions: () => apiRequest('/agents/01/sessions/'),
   getSession: (id) => apiRequest(`/agents/01/sessions/${id}`),
-  createSession: (data) => apiRequest('/agents/01/sessions', {
+  createSession: (data) => apiRequest('/agents/01/sessions/', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -75,13 +75,21 @@ export const api = {
   deleteSession: (agentId, id) => apiRequest(`/agents/${agentId}/sessions/${id}`, { method: 'DELETE' }),
 
   // Datasets
-  getDatasets: () => apiRequest('/datasets'),
+  getDatasets: () => apiRequest('/datasets/'),
   getDataset: (id) => apiRequest(`/datasets/${id}`),
   getDatasetSchema: (id) => apiRequest(`/datasets/${id}/schema`),
   uploadDataset: (formData) => apiRequest('/datasets/upload', {
     method: 'POST',
     headers: {},
     body: formData,
+  }),
+  getPresignedUrl: (data) => apiRequest('/datasets/presigned-url', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  confirmUpload: (data) => apiRequest('/datasets/confirm-upload', {
+    method: 'POST',
+    body: JSON.stringify(data)
   }),
   connectDatabase: (data) => apiRequest('/datasets/connect', {
     method: 'POST',
@@ -102,7 +110,7 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  getAutopilotSessions: () => apiRequest('/agents/02/sessions'),
+  getAutopilotSessions: () => apiRequest('/agents/02/sessions/'),
   autopilotGetSession: (id) => apiRequest(`/agents/02/sessions/${id}`),
   autopilotExport: (sessionId, format) => apiRequest(`/agents/02/${sessionId}/export/${format}`, {
     method: 'GET',
@@ -111,7 +119,7 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  getMLSessions: () => apiRequest('/agents/03/sessions'),
+  getMLSessions: () => apiRequest('/agents/03/sessions/'),
   mlGetSession: (sessionId) => apiRequest(`/agents/03/session/${sessionId}`, {
     method: 'GET',
   }),

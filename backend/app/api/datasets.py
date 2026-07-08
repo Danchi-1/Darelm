@@ -68,6 +68,14 @@ async def upload_dataset(
             detail="Only CSV and Excel files are supported"
         )
         
+    # Check for duplicate dataset
+    existing_dataset = db.query(Dataset).filter(
+        Dataset.user_id == current_user.id,
+        Dataset.name == file.filename
+    ).first()
+    if existing_dataset:
+        raise HTTPException(status_code=400, detail="A dataset with this name already exists.")
+
     dataset_type = "CSV" if file.filename.endswith('.csv') else "Excel"
     
     try:
@@ -125,8 +133,17 @@ async def upload_dataset(
 @router.post("/presigned-url")
 def generate_presigned_url(
     payload: PresignedUrlRequest,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Check for duplicate dataset before allowing upload
+    existing_dataset = db.query(Dataset).filter(
+        Dataset.user_id == current_user.id,
+        Dataset.name == payload.filename
+    ).first()
+    if existing_dataset:
+        raise HTTPException(status_code=400, detail="A dataset with this name already exists.")
+
     MAX_FILE_SIZE = 2000 * 1024 * 1024 # 2GB
     if payload.file_size > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large. Maximum size is 2GB.")

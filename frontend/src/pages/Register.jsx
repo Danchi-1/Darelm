@@ -164,7 +164,6 @@ export default function Register() {
               theme="outline"
               size="large"
               text="signup_with"
-              width="100%"
             />
           </div>
 

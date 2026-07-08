@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.deps import get_db, get_current_user
 from app.db.models import User, Dataset
-from app.schemas.dataset import DatasetResponse, DatasetCreateDb
+from app.schemas.dataset import DatasetResponse, DatasetCreateDb, PresignedUrlRequest, ConfirmUploadRequest
 from app.core.oss import oss_manager
 
 router = APIRouter()
@@ -121,6 +121,62 @@ async def upload_dataset(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+
+@router.post("/presigned-url")
+def generate_presigned_url(
+    payload: PresignedUrlRequest,
+    current_user: User = Depends(get_current_user)
+):
+    MAX_FILE_SIZE = 2000 * 1024 * 1024 # 2GB
+    if payload.file_size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 2GB.")
+        
+    allowed_mimes = [
+        'text/plain', 'text/csv', 'application/csv', 
+        'application/vnd.ms-excel', 
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ]
+    
+    if payload.content_type and payload.content_type not in allowed_mimes:
+        # Some browsers send empty mime types for csv, so we only block if it's strictly a bad mime
+        if not payload.filename.lower().endswith(('.csv', '.xlsx', '.xls')):
+            raise HTTPException(status_code=400, detail="Invalid file type.")
+
+    if not oss_manager.enabled:
+        return {"upload_url": None, "object_key": None, "fallback_local": True}
+        
+    import os
+    import uuid
+    extension = os.path.splitext(payload.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{extension}"
+    
+    upload_url = oss_manager.generate_presigned_upload_url(unique_filename)
+    return {"upload_url": upload_url, "object_key": f"oss://{unique_filename}", "fallback_local": False}
+
+@router.post("/confirm-upload", response_model=DatasetResponse)
+def confirm_upload(
+    payload: ConfirmUploadRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    dataset_type = "excel" if payload.filename.lower().endswith((".xls", ".xlsx")) else "csv"
+    
+    dataset = Dataset(
+        user_id=current_user.id,
+        name=payload.filename,
+        dataset_type=dataset_type,
+        size_bytes=payload.file_size,
+        storage_url=payload.object_key
+    )
+    db.add(dataset)
+    db.commit()
+    db.refresh(dataset)
+    
+    background_tasks.add_task(compress_dataset_background, payload.object_key)
+    
+    return dataset
+
 
 @router.post("/connect", response_model=DatasetResponse)
 def connect_database(

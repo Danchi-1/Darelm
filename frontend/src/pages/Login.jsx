@@ -135,7 +135,6 @@ export default function Login() {
               theme="outline"
               size="large"
               text="signin_with"
-              width="100%"
             />
           </div>
 

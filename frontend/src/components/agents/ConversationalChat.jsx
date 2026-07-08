@@ -21,6 +21,21 @@ export default function ConversationalChat() {
   const [showThoughts, setShowThoughts] = useState(true);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const [autoScroll, setAutoScroll] = useState(true);
+
+  const handleScroll = () => {
+    if (!chatContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+    setAutoScroll(isAtBottom);
+  };
+
+  useEffect(() => {
+    if (autoScroll) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, autoScroll]);
   const addToast = useToastStore((state) => state.addToast);
   const { id: sessionId } = useParams();
   const navigate = useNavigate();
@@ -110,6 +125,7 @@ export default function ConversationalChat() {
   }, [selectedDatasetId]);
 
   const scrollToBottom = () => {
+    setAutoScroll(true);
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -381,7 +397,7 @@ export default function ConversationalChat() {
             {showMobileSidebar ? 'Hide Data' : 'Select Data'}
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6" ref={chatContainerRef} onScroll={handleScroll}>
           {messages.map((message, index) => (
             <div
               key={index}
@@ -395,39 +411,51 @@ export default function ConversationalChat() {
                     {/* Agent Thoughts Section */}
                     {(message.thought || message.toolCalls) && (
                       <div className="mb-3">
-                        <button
-                          onClick={() => setShowThoughts(!showThoughts)}
-                          className="flex items-center gap-2 text-xs text-muted font-mono mb-2 hover:text-ink transition-colors"
-                        >
-                          {showThoughts ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                          <span>Agent reasoning</span>
-                          {message.toolCalls && message.toolCalls.length > 0 && (
-                            <Badge variant="neutral" className="text-[10px]">
-                              {message.toolCalls.length} tool{message.toolCalls.length > 1 ? 's' : ''}
-                            </Badge>
-                          )}
-                        </button>
-                        
-                        {showThoughts && (
-                          <div className="space-y-2">
-                            {/* Thoughts */}
-                            {message.thought && (
-                              <div className="bg-surface-dim border border-border rounded-card p-3">
-                                <div className="text-xs text-muted font-mono mb-1">Thinking</div>
-                                <div className="text-sm text-ink whitespace-pre-wrap">{message.thought}</div>
-                              </div>
-                            )}
-                            
-                            {/* Tool Calls */}
+                        <div className="bg-surface-raised border border-border rounded-lg overflow-hidden transition-all duration-200">
+                          <button
+                            onClick={() => setShowThoughts(!showThoughts)}
+                            className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/5 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 text-xs text-muted font-mono">
+                              {showThoughts ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                              <span className="flex items-center gap-2">
+                                Thought Process
+                                {isTyping && index === messages.length - 1 && !message.content && (
+                                  <span className="flex gap-1 ml-1">
+                                    <span className="w-1.5 h-1.5 bg-signal rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                    <span className="w-1.5 h-1.5 bg-signal rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                    <span className="w-1.5 h-1.5 bg-signal rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                  </span>
+                                )}
+                              </span>
+                            </div>
                             {message.toolCalls && message.toolCalls.length > 0 && (
-                              <div className="space-y-1">
-                                {message.toolCalls.map((toolCall, tcIndex) => (
-                                  <ToolCallItem key={tcIndex} toolCall={toolCall} />
-                                ))}
-                              </div>
+                              <Badge variant="neutral" className="text-[10px]">
+                                {message.toolCalls.length} tool{message.toolCalls.length > 1 ? 's' : ''}
+                              </Badge>
                             )}
-                          </div>
-                        )}
+                          </button>
+                          
+                          {showThoughts && (
+                            <div className="p-3 border-t border-border/50 space-y-3 bg-surface/30">
+                              {/* Thoughts */}
+                              {message.thought && (
+                                <div className="text-sm text-muted whitespace-pre-wrap font-mono leading-relaxed border-l-2 border-signal/30 pl-3">
+                                  {message.thought}
+                                </div>
+                              )}
+                              
+                              {/* Tool Calls */}
+                              {message.toolCalls && message.toolCalls.length > 0 && (
+                                <div className="space-y-1 mt-2">
+                                  {message.toolCalls.map((toolCall, tcIndex) => (
+                                    <ToolCallItem key={tcIndex} toolCall={toolCall} />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     

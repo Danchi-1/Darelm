@@ -32,6 +32,7 @@ class Dataset(Base):
     _connection_string_encrypted = Column('connection_string', String, nullable=True) # For remote DBs
     storage_url = Column(String, nullable=True) # For S3/Cloud storage URLs
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_accessed_at = Column(DateTime(timezone=True), server_default=func.now())
 
     owner = relationship("User", back_populates="datasets")
     chat_sessions = relationship("ChatSession", back_populates="dataset", cascade="all, delete-orphan")

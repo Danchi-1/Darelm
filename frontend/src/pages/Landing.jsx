@@ -250,8 +250,8 @@ function BentoGrid() {
           <div className="md:col-span-2 md:row-span-2 bg-surface/40 backdrop-blur border border-white/10 rounded-2xl p-8 flex flex-col justify-end relative overflow-hidden group hover:bg-surface/60 transition-colors">
             <div className="absolute inset-0 bg-gradient-to-br from-signal/5 to-transparent pointer-events-none" />
             <div className="absolute top-8 right-8 w-24 h-24 bg-signal/20 rounded-full blur-2xl group-hover:bg-signal/40 transition-colors duration-500" />
-            <h3 className="font-mono text-2xl text-ink mb-2">Enterprise-Grade Security</h3>
-            <p className="text-muted max-w-md">Your data is processed in isolated, ephemeral environments ensuring complete privacy, zero data leakage, and absolutely no risks to your underlying infrastructure.</p>
+            <h3 className="font-mono text-2xl text-ink mb-2">Zero-Trust Data Privacy</h3>
+            <p className="text-muted max-w-md">Your data is your business. Darelm never uses your datasets to train models. Every analysis runs in a completely isolated secure sandbox, and your data is automatically wiped from our servers after 3 days of inactivity. Test it out with complete peace of mind.</p>
           </div>
 
           {/* Medium Card */}

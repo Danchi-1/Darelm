@@ -258,10 +258,24 @@ try:{download_code}
         df = pd.read_excel('{sandbox_filename}')
     print("Dataset loaded into `df`")
 except Exception as e:
-    print('Failed to load dataset:', e)
+    print('Failed to load dataset:', str(e))
+    raise e
 """
+            print("[EXECUTOR] Installing required packages in sandbox...")
+            await asyncio.to_thread(sandbox.commands.run, "pip install openpyxl xlrd", timeout=60)
+            
             print("[EXECUTOR] Running init code...")
-            await asyncio.to_thread(sandbox.run_code, init_code)
+            exec_res = await asyncio.to_thread(sandbox.run_code, init_code)
+            
+            if exec_res.error:
+                error_msg = exec_res.error.value
+                print(f"[EXECUTOR] Init code failed: {error_msg}")
+                yield f"data: {json.dumps({'status': 'error', 'message': f'Failed to load dataset into sandbox: {error_msg}'})}\n\n"
+                return
+                
+            if exec_res.text:
+                print(f"[EXECUTOR] Init code stdout: {exec_res.text}")
+                
             print("[EXECUTOR] Init code complete.")
             
             all_findings = {}

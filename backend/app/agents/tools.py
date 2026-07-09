@@ -33,10 +33,10 @@ def get_dataset_context(dataset_id: str, db: Session) -> dict:
     }
 
     # Extract schema if it's a file
-    if dataset.dataset_type.lower() in ["csv", "excel"] and dataset.storage_url:
+    if dataset.dataset_type.lower() in ["csv", "excel"] and storage_url:
         try:
             # Handle local fallback vs full URL
-            path = dataset.storage_url
+            path = storage_url
             if path.startswith("local://"):
                 path = path.replace("local://", "")
                 

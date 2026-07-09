@@ -13,8 +13,16 @@ class OSSManager:
             settings.ALIYUN_OSS_ENDPOINT, 
             settings.ALIYUN_OSS_BUCKET_NAME
         ]):
-            self.auth = oss2.Auth(settings.ALIYUN_ACCESS_KEY_ID, settings.ALIYUN_ACCESS_KEY_SECRET)
-            self.bucket = oss2.Bucket(self.auth, settings.ALIYUN_OSS_ENDPOINT, settings.ALIYUN_OSS_BUCKET_NAME)
+            # Use V4 Signature (required by newer regions)
+            self.auth = oss2.AuthV4(settings.ALIYUN_ACCESS_KEY_ID, settings.ALIYUN_ACCESS_KEY_SECRET)
+            
+            # Extract region and ensure https
+            endpoint = settings.ALIYUN_OSS_ENDPOINT
+            region = endpoint.replace("oss-", "").replace(".aliyuncs.com", "").replace("-internal", "")
+            if not endpoint.startswith("http"):
+                endpoint = f"https://{endpoint}"
+                
+            self.bucket = oss2.Bucket(self.auth, endpoint, settings.ALIYUN_OSS_BUCKET_NAME, region=region)
             self.enabled = True
 
     async def upload_file(self, file: UploadFile) -> str:

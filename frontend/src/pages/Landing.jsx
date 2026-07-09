@@ -277,7 +277,7 @@ function BentoGrid() {
           {/* Card 5: Visualizations (Medium) */}
           <div className={`${cardClasses} md:col-span-2 top-[18vh]`}>
             <h3 className="font-mono text-xl text-ink mb-2">Real-Time Visualizations</h3>
-            <p className="text-sm text-muted">Dynamic, interactive charts generated instantly based on your data's patterns, ready for inspection and download.</p>
+            <p className="text-sm text-muted">High-resolution, publication-ready charts generated instantly based on your data's patterns, ready for inspection and download.</p>
           </div>
 
           {/* Card 6: Qwen (Wide) */}

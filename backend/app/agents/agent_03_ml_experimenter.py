@@ -171,6 +171,7 @@ async def execute_ml_experiment(
             yield f"data: {json.dumps({'status': 'thought', 'content': 'Mounting dataset...'})}\n\n"
             
             # Mount dataset
+            sandbox_filename = "dataset.xlsx" if dataset_context.get("dataset_type", "").lower() == "excel" else "dataset.csv"
             if storage_url and not storage_url.startswith("http"):
                 if storage_url.startswith("local://"):
                     file_path = storage_url.replace("local://", "")
@@ -184,18 +185,31 @@ async def execute_ml_experiment(
                 def write_dataset():
                     if abs_path.endswith('.gz') and os.path.exists(abs_path):
                         with gzip.open(abs_path, "rb") as f:
-                            sandbox.files.write(f"/home/user/dataset.csv", f.read())
+                            sandbox.files.write(f"/home/user/{sandbox_filename}", f.read())
                     else:
                         with open(abs_path, "rb") as f:
-                            sandbox.files.write(f"/home/user/dataset.csv", f)
+                            sandbox.files.write(f"/home/user/{sandbox_filename}", f)
                 await asyncio.to_thread(write_dataset)
             elif storage_url and storage_url.startswith("http"):
                 yield f"data: {json.dumps({'status': 'thought', 'content': 'Downloading dataset securely from cloud...'})}\n\n"
+                
+                print("[EXECUTOR] Installing required packages in sandbox...")
+                await asyncio.to_thread(sandbox.commands.run, "pip install openpyxl xlrd", timeout=60)
+                
                 download_code = f"""
 import urllib.request
-urllib.request.urlretrieve('{storage_url}', '/home/user/dataset.csv')
+try:
+    urllib.request.urlretrieve('{storage_url}', '/home/user/{sandbox_filename}')
+    print("Dataset downloaded successfully")
+except Exception as e:
+    raise Exception("Failed to download dataset: " + str(e))
 """
-                await asyncio.to_thread(sandbox.run_code, download_code)
+                exec_res = await asyncio.to_thread(sandbox.run_code, download_code)
+                if exec_res.error:
+                    error_msg = exec_res.error.value
+                    print(f"[EXECUTOR] Download code failed: {error_msg}")
+                    yield f"data: {json.dumps({'status': 'error', 'message': f'Failed to load dataset into sandbox: {error_msg}'})}\n\n"
+                    return
 
             findings = []
             
@@ -212,7 +226,7 @@ urllib.request.urlretrieve('{storage_url}', '/home/user/dataset.csv')
                     "type": "function",
                     "function": {
                         "name": "execute_python",
-                        "description": "Execute Python in a secure sandbox. The dataset is already saved at /home/user/dataset.csv",
+                        "description": f"Execute Python in a secure sandbox. The dataset is already saved at /home/user/{sandbox_filename}",
                         "parameters": {
                             "type": "object",
                             "properties": {

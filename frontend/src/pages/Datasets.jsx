@@ -21,6 +21,7 @@ const columns = [
 export default function Datasets() {
   const [datasets, setDatasets] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [showDbModal, setShowDbModal] = useState(false);
   const [showUrlModal, setShowUrlModal] = useState(false);
   const [importUrl, setImportUrl] = useState("");
@@ -92,17 +93,31 @@ export default function Datasets() {
         await api.uploadDataset(formData);
       } else {
         addToast('Uploading directly to cloud storage...', 'info');
-        const uploadResponse = await fetch(upload_url, {
-          method: 'PUT',
-          body: file,
-          headers: {
-            'Content-Type': file.type || 'application/octet-stream'
-          }
-        });
+        setUploadProgress(1); // Start at 1% to show the bar
 
-        if (!uploadResponse.ok) {
-          throw new Error(`Failed to upload to OSS: ${uploadResponse.statusText}`);
-        }
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('PUT', upload_url, true);
+          xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+          
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const percentComplete = Math.round((e.loaded / e.total) * 100);
+              setUploadProgress(percentComplete);
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve();
+            } else {
+              reject(new Error(`Failed to upload to OSS: ${xhr.statusText}`));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error('Network error during upload'));
+          xhr.send(file);
+        });
 
         addToast('Finalizing dataset...', 'info');
         await api.confirmUpload({
@@ -119,6 +134,7 @@ export default function Datasets() {
       addToast('Failed to upload dataset: ' + error.message, 'error');
     } finally {
       setIsLoading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -296,6 +312,22 @@ export default function Datasets() {
             + Import from URL (Kaggle/Public)
           </Button>
         </div>
+
+        {/* Upload Progress Bar */}
+        {uploadProgress > 0 && (
+          <div className="mb-6 p-4 bg-surface border border-border rounded-card flex flex-col gap-2 shadow-sm">
+            <div className="flex justify-between items-center text-sm font-medium text-text">
+              <span>Uploading to Secure Cloud Storage...</span>
+              <span className="text-signal">{uploadProgress}%</span>
+            </div>
+            <div className="w-full h-2 bg-background rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-signal rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
 
         {/* Datasets Table */}
         {isLoading ? (

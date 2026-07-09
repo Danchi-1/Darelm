@@ -82,7 +82,7 @@ export default function ConversationalChat() {
           setMessages([
             {
               role: 'agent',
-              content: "Please select a dataset from the left panel to get started.",
+              content: "__SYSTEM_WELCOME__",
             },
           ]);
         } else {
@@ -461,9 +461,17 @@ export default function ConversationalChat() {
                     
                     {/* Final Response */}
                     <div className="text-ink text-sm w-full overflow-hidden prose prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-surface-raised prose-td:border-border prose-th:border-border prose-th:bg-surface-raised">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {message.content}
-                      </ReactMarkdown>
+                      {message.content === '__SYSTEM_WELCOME__' ? (
+                        selectedDatasetId ? (
+                          <span>Active dataset selected! Go to the <span className="hidden md:inline">left panel</span><span className="inline md:hidden">Data menu</span> to change it.</span>
+                        ) : (
+                          <span>Please select a dataset from the <span className="hidden md:inline">left panel</span><span className="inline md:hidden">Data menu</span> to get started.</span>
+                        )
+                      ) : (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {message.content}
+                        </ReactMarkdown>
+                      )}
                     </div>
                   </>
                 )}

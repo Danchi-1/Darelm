@@ -55,4 +55,24 @@ class OSSManager:
             return self.bucket.sign_url('PUT', object_key, expires_in_seconds)
         return ""
 
+    def delete_file(self, storage_url: str):
+        """Deletes a file from OSS or local storage."""
+        if not storage_url:
+            return
+            
+        if storage_url.startswith("oss://") and self.enabled:
+            object_key = storage_url.replace("oss://", "")
+            try:
+                self.bucket.delete_object(object_key)
+            except Exception as e:
+                print(f"Failed to delete {object_key} from OSS: {e}")
+                
+        elif storage_url.startswith("local://"):
+            local_path = storage_url.replace("local://", "")
+            try:
+                if os.path.exists(local_path):
+                    os.remove(local_path)
+            except Exception as e:
+                print(f"Failed to delete {local_path} from local storage: {e}")
+
 oss_manager = OSSManager()

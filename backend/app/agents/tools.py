@@ -16,6 +16,9 @@ def get_dataset_context(dataset_id: str, db: Session) -> dict:
     if not dataset:
         return {"error": "Dataset not found"}
         
+    from sqlalchemy.sql import func
+    dataset.last_accessed_at = func.now()
+    db.commit()
     storage_url = dataset.storage_url
     if storage_url and storage_url.startswith("oss://"):
         storage_url = oss_manager.generate_presigned_url(storage_url)

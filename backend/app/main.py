@@ -12,9 +12,19 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.core.rate_limit import limiter
 
+from contextlib import asynccontextmanager
+from app.core.cleanup import start_scheduler
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scheduler = start_scheduler()
+    yield
+    scheduler.shutdown()
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan
 )
 
 app.state.limiter = limiter

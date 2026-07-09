@@ -93,6 +93,8 @@ CORE RULES UNDER TIME PRESSURE:
 
 10. NEVER FABRICATE METRICS. Every number reported must come from actual code execution. If something didn't complete, say so explicitly rather than estimating.
 
+11. IF YOU TRAIN A MODEL, YOU MUST SAVE IT. You must save the final trained model (scikit-learn, xgboost, etc.) to `/home/user/model.pkl` using `joblib` or `pickle` so the user can download it later.
+
 ---
 
 OUTPUT FORMAT (per step):

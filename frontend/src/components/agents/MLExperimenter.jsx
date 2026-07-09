@@ -27,7 +27,9 @@ export default function MLExperimenter() {
   const [completedSteps, setCompletedSteps] = useState([]);
   const [reportData, setReportData] = useState(null);
   const [completionStatus, setCompletionStatus] = useState(null);
-  
+  const [fullScreenImage, setFullScreenImage] = useState(null);
+  const [modelAvailable, setModelAvailable] = useState(false);
+
   const addToast = useToastStore((state) => state.addToast);
   const { id } = useParams();
 
@@ -51,6 +53,7 @@ export default function MLExperimenter() {
           setSessionId(data.id);
           setHypothesis(data.hypothesis);
           setPlanData(data.plan);
+          setModelAvailable(data.model_available || false);
           if (data.status === 'planning') setPhase('plan');
           else if (data.status === 'executing') setPhase('execution');
           else if (data.status === 'completed' || data.status === 'partial') {
@@ -357,7 +360,21 @@ export default function MLExperimenter() {
               )}
             </div>
 
-            <div className="mt-8 flex justify-end">
+            <div className="mt-8 flex justify-end gap-4">
+              {modelAvailable && (
+                <Button variant="outline" size="md" onClick={async () => {
+                  try {
+                    const res = await api.getMLModelDownloadUrl(sessionId);
+                    if (res.download_url) {
+                      window.open(res.download_url, '_blank');
+                    }
+                  } catch (e) {
+                    addToast('Failed to get download URL', 'error');
+                  }
+                }}>
+                  Download Trained Model (.pkl)
+                </Button>
+              )}
               <Button variant="primary" size="md" onClick={() => {
                 setPhase('hypothesis');
                 setSessionId(null);

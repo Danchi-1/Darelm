@@ -128,6 +128,7 @@ class MLExperimentSession(Base):
     status = Column(String, nullable=False, default="planning") # planning, executing, completed, partial, failed
     findings_json = Column(String, nullable=True) # JSON string array
     report_json = Column(String, nullable=True) # JSON string
+    model_url = Column(String, nullable=True) # URL or path to the trained model file
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

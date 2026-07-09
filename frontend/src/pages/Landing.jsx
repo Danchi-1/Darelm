@@ -241,8 +241,8 @@ function BentoGrid() {
       
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-16">
-          <h2 className="font-mono text-4xl text-ink tracking-tight mb-4">Enterprise-grade infrastructure</h2>
-          <p className="text-muted text-lg">Built for scale, security, and uncompromising performance.</p>
+          <h2 className="font-mono text-4xl text-ink tracking-tight mb-4">Unleash autonomous analysis</h2>
+          <p className="text-muted text-lg">Built for speed, security, and uncompromising analytical depth.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[240px]">
@@ -256,14 +256,14 @@ function BentoGrid() {
 
           {/* Medium Card */}
           <div className="bg-surface/40 backdrop-blur border border-white/10 rounded-2xl p-8 flex flex-col justify-center relative group hover:bg-surface/60 transition-colors">
-            <h3 className="font-mono text-xl text-ink mb-2">Any Data Source</h3>
-            <p className="text-sm text-muted">CSV, Excel, Postgres, MySQL, or public APIs.</p>
+            <h3 className="font-mono text-xl text-ink mb-2">Universal Connectors</h3>
+            <p className="text-sm text-muted">Upload CSVs/Excel directly, or connect securely to live PostgreSQL and MySQL databases without any ETL.</p>
           </div>
 
           {/* Medium Card */}
           <div className="bg-surface/40 backdrop-blur border border-white/10 rounded-2xl p-8 flex flex-col justify-center relative group hover:bg-surface/60 transition-colors">
-            <h3 className="font-mono text-xl text-ink mb-2">Auto-Scaling</h3>
-            <p className="text-sm text-muted">Powered by Alibaba Cloud and Docker.</p>
+            <h3 className="font-mono text-xl text-ink mb-2">Jupyter-grade Sandboxes</h3>
+            <p className="text-sm text-muted">Zero local setup. Every analysis runs in a dedicated Python environment with Pandas and Scikit-Learn pre-installed.</p>
           </div>
 
           {/* Wide Card */}

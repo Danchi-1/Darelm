@@ -263,8 +263,10 @@ def delete_dataset(
     
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
-        
-    # TODO: Also delete from OSS if it's a file
+    if dataset.storage_url:
+        oss_manager.delete_file(dataset.storage_url)
+        # Also attempt to delete the .gz version if it was compressed
+        oss_manager.delete_file(f"{dataset.storage_url}.gz")
     
     db.delete(dataset)
     db.commit()

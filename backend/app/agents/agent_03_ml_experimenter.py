@@ -189,10 +189,13 @@ async def execute_ml_experiment(
                         with open(abs_path, "rb") as f:
                             sandbox.files.write(f"/home/user/dataset.csv", f)
                 await asyncio.to_thread(write_dataset)
-            else:
-                yield f"data: {json.dumps({'status': 'error', 'message': 'Only local datasets supported in sandbox currently'})}\n\n"
-                await asyncio.to_thread(sandbox.kill)
-                return
+            elif storage_url and storage_url.startswith("http"):
+                yield f"data: {json.dumps({'status': 'thought', 'content': 'Downloading dataset securely from cloud...'})}\n\n"
+                download_code = f"""
+import urllib.request
+urllib.request.urlretrieve('{storage_url}', '/home/user/dataset.csv')
+"""
+                await asyncio.to_thread(sandbox.run_code, download_code)
 
             findings = []
             

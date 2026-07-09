@@ -230,6 +230,14 @@ async def confirm_autopilot(
                 print("[EXECUTOR] Dataset uploaded (compressed).")                    
             # Run initial import script to make df available globally
             yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Initializing Python environment...'})}\n\n"
+            download_code = ""
+            if dataset_path and dataset_path.startswith("http"):
+                download_code = f"""
+    import urllib.request
+    print('Downloading dataset securely from OSS...')
+    urllib.request.urlretrieve('{dataset_path}', '{sandbox_filename}')
+"""
+
             init_code = f"""import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -237,7 +245,7 @@ import gzip
 import shutil
 import os
 
-try:
+try:{download_code}
     if os.path.exists('{sandbox_filename}.gz'):
         with gzip.open('{sandbox_filename}.gz', 'rb') as f_in:
             with open('{sandbox_filename}', 'wb') as f_out:

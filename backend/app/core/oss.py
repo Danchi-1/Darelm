@@ -49,10 +49,13 @@ class OSSManager:
             return self.bucket.sign_url('GET', object_key, expires_in_seconds).replace('http://', 'https://')
         return storage_url
 
-    def generate_presigned_upload_url(self, object_key: str, expires_in_seconds: int = 3600) -> str:
+    def generate_presigned_upload_url(self, object_key: str, content_type: str = None, expires_in_seconds: int = 3600) -> str:
         """Generates a short-lived presigned URL for secure frontend upload."""
         if self.enabled:
-            return self.bucket.sign_url('PUT', object_key, expires_in_seconds).replace('http://', 'https://')
+            headers = {}
+            if content_type:
+                headers['Content-Type'] = content_type
+            return self.bucket.sign_url('PUT', object_key, expires_in_seconds, headers=headers).replace('http://', 'https://')
         return ""
 
     def delete_file(self, storage_url: str):

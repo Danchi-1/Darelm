@@ -167,7 +167,7 @@ def generate_presigned_url(
     extension = os.path.splitext(payload.filename)[1]
     unique_filename = f"{uuid.uuid4()}{extension}"
     
-    upload_url = oss_manager.generate_presigned_upload_url(unique_filename)
+    upload_url = oss_manager.generate_presigned_upload_url(unique_filename, content_type=payload.content_type)
     return {"upload_url": upload_url, "object_key": f"oss://{unique_filename}", "fallback_local": False}
 
 @router.post("/confirm-upload", response_model=DatasetResponse)

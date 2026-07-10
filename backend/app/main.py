@@ -39,9 +39,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.api.shared import router as shared_router
+
 app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(users_router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
 app.include_router(datasets_router, prefix=f"{settings.API_V1_STR}/datasets", tags=["datasets"])
+app.include_router(shared_router, prefix=f"{settings.API_V1_STR}/shared", tags=["shared"])
 app.include_router(agent_01_router, prefix=f"{settings.API_V1_STR}/agents/01", tags=["agent-01"])
 app.include_router(agent_02_router, prefix=f"{settings.API_V1_STR}/agents/02", tags=["agent-02"])
 app.include_router(agent_03_router, prefix=f"{settings.API_V1_STR}/agents/03", tags=["agent-03"])

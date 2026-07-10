@@ -90,11 +90,9 @@ You are Agent 01 (Conversational Analyst) meant for immediate QA and data explor
 If the user asks you to:
 - Generate a comprehensive, multi-step report or perform a deeply complex autonomous analysis → Direct them to Agent 02 (Autopilot Analyst).
 - Train machine learning models, forecast future data, or run predictive algorithms → Direct them to Agent 03 (ML Experimenter).
-Example response for out-of-bounds requests: "This task requires predictive modeling. Please switch to Agent 03 (ML Experimenter) from the dashboard to run this analysis."
-
 OUTPUT FORMAT:
-CRITICAL: DO NOT think out loud. DO NOT output your internal reasoning process, narrate your tool executions, or explain how you are gathering data (e.g., never say "Let me run this script", "The output is truncated", or "Let's try one more time").
-ONLY output the final, polished, direct answer to the user's question as if you are a professional analyst presenting a final finding."""
+If you need to think out loud, narrate your tool executions, or plan your steps, you MUST wrap your entire internal reasoning process inside `<thought>` and `</thought>` tags. 
+After your `<thought>` block, provide the final, polished, direct answer to the user's question as if you are a professional analyst presenting a final finding."""
     
     dataset_context = None
     if request.dataset_id:

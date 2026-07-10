@@ -58,6 +58,9 @@ async def start_ml_experiment(
         raise HTTPException(status_code=404, detail="Dataset not found")
         
     dataset_context = get_dataset_context(str(dataset.id), db)
+    if dataset_context.get("error"):
+        raise HTTPException(status_code=404, detail=dataset_context["error"])
+        
     db.commit() # Release connection
     
     context_str = f"""USER GOAL:

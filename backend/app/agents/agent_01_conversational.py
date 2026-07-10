@@ -99,7 +99,9 @@ After your `<thought>` block, provide the final, polished, direct answer to the 
         from app.agents.tools import get_dataset_context
         dataset_context = get_dataset_context(request.dataset_id, db)
         if dataset_context.get("error"):
-            raise HTTPException(status_code=404, detail="Dataset not found")
+            async def error_stream():
+                yield f"data: {json.dumps({'error': dataset_context['error']})}\n\n"
+            return StreamingResponse(error_stream(), media_type="text/event-stream")
             
     # Handle Session Logic
     if request.session_id:

@@ -61,6 +61,9 @@ async def start_autopilot(
         raise HTTPException(status_code=404, detail="Dataset not found")
         
     dataset_context = get_dataset_context(str(dataset.id), db)
+    if dataset_context.get("error"):
+        raise HTTPException(status_code=404, detail=dataset_context["error"])
+        
     db.commit() # Release DB connection back to the pool to prevent timeout during long LLM call
     
     # 1. Run Planner LLM

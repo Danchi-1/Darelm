@@ -5,6 +5,7 @@ import Button from '../ui/Button';
 import Badge from '../ui/Badge';
 import { useToastStore } from '../../store/toastStore';
 import { api } from '../../lib/api';
+import DashboardView from './DashboardView';
 
 const phases = ['goal', 'planning', 'execution', 'report'];
 
@@ -23,6 +24,7 @@ export default function AutopilotFlow() {
   const [executingMessage, setExecutingMessage] = useState('');
   const [userFeedback, setUserFeedback] = useState('');
   const [fullScreenImage, setFullScreenImage] = useState(null);
+  const [viewMode, setViewMode] = useState('report');
   const addToast = useToastStore((state) => state.addToast);
   const { id } = useParams();
 
@@ -318,11 +320,41 @@ export default function AutopilotFlow() {
       case 'report':
         if (!reportData) return <div className="max-w-4xl mx-auto text-center mt-20"><p className="text-muted">Loading report...</p></div>;
         
+        if (viewMode === 'dashboard') {
+          return (
+            <div className="relative">
+              <div className="flex justify-end gap-2 mb-6 max-w-7xl mx-auto px-6">
+                <Button variant="ghost" size="sm" onClick={() => setViewMode('report')}>
+                  View as Report
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  const url = `${window.location.origin}/shared/dashboard/${sessionId}`;
+                  navigator.clipboard.writeText(url);
+                  addToast('Dashboard link copied to clipboard!', 'success');
+                }}>
+                  Share Dashboard
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => {
+                  setPhase('goal');
+                  setSessionId(null);
+                  navigate('/session/new?agent=02');
+                }}>
+                  New Analysis
+                </Button>
+              </div>
+              <DashboardView reportData={reportData} />
+            </div>
+          );
+        }
+
         return (
           <div className="max-w-4xl mx-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="font-mono text-2xl text-ink">{reportData.title || 'Analysis Report'}</h2>
               <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setViewMode('dashboard')}>
+                  View Dashboard
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => handleExport('pdf')}>
                   Export PDF
                 </Button>

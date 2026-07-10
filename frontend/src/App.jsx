@@ -10,6 +10,7 @@ import Datasets from './pages/Datasets';
 import Settings from './pages/Settings';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import SharedDashboard from './pages/SharedDashboard';
 import ToastContainer from './components/ui/ToastContainer';
 import { useAuthStore } from './store/authStore';
 
@@ -64,6 +65,7 @@ function App() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/shared/dashboard/:id" element={<SharedDashboard />} />
         <Route
           path="/dashboard"
           element={

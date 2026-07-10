@@ -93,7 +93,8 @@ If the user asks you to:
 Example response for out-of-bounds requests: "This task requires predictive modeling. Please switch to Agent 03 (ML Experimenter) from the dashboard to run this analysis."
 
 OUTPUT FORMAT:
-Provide your reasoning process if needed, but end with a clear Answer."""
+CRITICAL: DO NOT think out loud. DO NOT output your internal reasoning process, narrate your tool executions, or explain how you are gathering data (e.g., never say "Let me run this script", "The output is truncated", or "Let's try one more time").
+ONLY output the final, polished, direct answer to the user's question as if you are a professional analyst presenting a final finding."""
     
     dataset_context = None
     if request.dataset_id:

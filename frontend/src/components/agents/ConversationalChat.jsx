@@ -229,6 +229,21 @@ export default function ConversationalChat() {
                   break;
                 }
                 
+                if (data.move_content_to_thought) {
+                  setMessages((prev) => {
+                    const newMessages = [...prev];
+                    if (newMessages.length > 0) {
+                      const lastIndex = newMessages.length - 1;
+                      const msg = newMessages[lastIndex];
+                      if (msg.content) {
+                        msg.thought = (msg.thought || '') + msg.content;
+                        msg.content = '';
+                      }
+                    }
+                    return newMessages;
+                  });
+                }
+                
                 if (data.content) {
                   setMessages((prev) => {
                     const newMessages = [...prev];

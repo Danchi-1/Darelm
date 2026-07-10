@@ -130,6 +130,9 @@ export const api = {
   mlExport: (sessionId, format) => apiRequest(`/agents/03/${sessionId}/export/${format}`, {
     method: 'GET',
   }),
+  getMLModelDownloadUrl: (sessionId) => apiRequest(`/agents/03/session/${sessionId}/model`, {
+    method: 'GET',
+  }),
 
   // Settings
   getUserSettings: () => apiRequest('/users/settings'),

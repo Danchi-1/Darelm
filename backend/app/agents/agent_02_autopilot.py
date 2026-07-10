@@ -588,7 +588,9 @@ def export_session(
     elif format.lower() == "csv":
         return Response(content="Title,Content\nReport,Not supported in CSV yet", media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=report_{session_id}.csv"})
     elif format.lower() == "pdf":
-        return Response(content="PDF Export not fully implemented yet", media_type="text/plain", headers={"Content-Disposition": f"attachment; filename=report_{session_id}.txt"})
+        from app.core.pdf_generator import generate_report_pdf
+        pdf_bytes = generate_report_pdf(report)
+        return Response(content=bytes(pdf_bytes), media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=report_{session_id}.pdf"})
     else:
         raise HTTPException(status_code=400, detail="Unsupported format")
 

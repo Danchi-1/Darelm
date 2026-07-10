@@ -25,3 +25,4 @@ defusedxml
 openpyxl
 gunicorn
 apscheduler
+fpdf2

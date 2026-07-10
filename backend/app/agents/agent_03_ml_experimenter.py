@@ -298,7 +298,20 @@ except Exception as e:
                         yield chunk
             except asyncio.TimeoutError:
                 completion_status = "partial"
-                sandbox.kill() # Explictly kill
+            
+            # Try to extract the trained model if saved
+            try:
+                print("[EXECUTOR] Attempting to extract trained model...")
+                model_bytes = await asyncio.to_thread(sandbox.files.read, "/home/user/model.pkl", format="bytes")
+                print(f"[EXECUTOR] Model extracted successfully, size: {len(model_bytes)} bytes")
+                from app.core.oss import OSSManager
+                oss_mgr = OSSManager()
+                model_url = await oss_mgr.upload_bytes(model_bytes, extension=".pkl")
+                session_model.model_url = model_url
+            except Exception as e:
+                print(f"[EXECUTOR] No trained model extracted (or error): {str(e)}")
+
+            sandbox.kill() # Explictly kill
             
             # Save findings
             session_model.findings_json = json.dumps(findings)
@@ -345,7 +358,8 @@ async def get_ml_session(
         "status": session.status,
         "plan": json.loads(session.plan_json or "{}"),
         "findings": json.loads(session.findings_json or "[]"),
-        "report": json.loads(session.report_json or "{}")
+        "report": json.loads(session.report_json or "{}"),
+        "model_available": bool(session.model_url)
     }
 
 @router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -361,6 +375,38 @@ def delete_ml_session(
     db.delete(session)
     db.commit()
     return None
+
+@router.get("/session/{session_id}/model")
+async def download_ml_model(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    session = db.query(MLExperimentSession).filter(
+        MLExperimentSession.id == session_id,
+        MLExperimentSession.user_id == current_user.id
+    ).first()
+    
+    if not session or not session.model_url:
+        raise HTTPException(status_code=404, detail="Model not found for this session")
+        
+    from app.core.oss import OSSManager
+    oss_mgr = OSSManager()
+    
+    # If the model is stored locally in dev mode
+    if session.model_url.startswith("local://"):
+        local_path = session.model_url.replace("local://", "")
+        import os
+        from fastapi.responses import FileResponse
+        if os.path.exists(local_path):
+            return FileResponse(local_path, filename=f"model_{session_id}.pkl")
+        raise HTTPException(status_code=404, detail="Local model file missing")
+        
+    # Generate presigned URL for OSS
+    download_url = oss_mgr.generate_presigned_url(session.model_url, expires_in_seconds=600)
+    
+    # Return JSON with the URL so frontend can open it
+    return {"download_url": download_url}
 
 class MLRenameRequest(BaseModel):
     title: str

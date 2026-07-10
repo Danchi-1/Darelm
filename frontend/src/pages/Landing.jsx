@@ -235,44 +235,58 @@ function WorkingProof() {
 }
 
 function BentoGrid() {
+  const cardClasses = "bg-surface/95 md:bg-surface/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 flex flex-col justify-center relative group hover:bg-surface/60 transition-colors shadow-2xl md:shadow-none sticky md:static md:top-auto mb-8 md:mb-0 overflow-hidden";
+
   return (
-    <section className="py-32 px-6 relative overflow-hidden bg-void">
+    <section className="py-32 px-6 relative overflow-visible bg-void">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-signal/10 blur-[120px] rounded-full pointer-events-none" />
       
       <div className="max-w-6xl mx-auto relative z-10">
-        <div className="text-center mb-16">
-          <h2 className="font-mono text-4xl text-ink tracking-tight mb-4">Enterprise-grade infrastructure</h2>
-          <p className="text-muted text-lg">Built for scale, security, and uncompromising performance.</p>
+        <div className="text-center mb-16 md:static">
+          <h2 className="font-mono text-4xl text-ink tracking-tight mb-4">Unleash autonomous analysis</h2>
+          <p className="text-muted text-lg">Built for speed, security, and uncompromising analytical depth.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[240px]">
-          {/* Large Card */}
-          <div className="md:col-span-2 md:row-span-2 bg-surface/40 backdrop-blur border border-white/10 rounded-2xl p-8 flex flex-col justify-end relative overflow-hidden group hover:bg-surface/60 transition-colors">
+        <div className="flex flex-col md:grid md:grid-cols-3 gap-6 md:auto-rows-[240px]">
+          {/* Card 1: Privacy (Large) */}
+          <div className={`${cardClasses} md:col-span-2 md:row-span-2 md:justify-end top-[10vh]`}>
             <div className="absolute inset-0 bg-gradient-to-br from-signal/5 to-transparent pointer-events-none" />
             <div className="absolute top-8 right-8 w-24 h-24 bg-signal/20 rounded-full blur-2xl group-hover:bg-signal/40 transition-colors duration-500" />
-            <h3 className="font-mono text-2xl text-ink mb-2">Enterprise-Grade Security</h3>
-            <p className="text-muted max-w-md">Your data is processed in isolated, ephemeral environments ensuring complete privacy, zero data leakage, and absolutely no risks to your underlying infrastructure.</p>
+            <h3 className="font-mono text-2xl text-ink mb-2 relative z-10">Zero-Trust Data Privacy</h3>
+            <p className="text-muted max-w-md relative z-10">Your data is your business. Darelm never uses your datasets to train models. Every analysis runs in a completely isolated secure sandbox, and your data is automatically wiped from our servers after 3 days of inactivity.</p>
           </div>
 
-          {/* Medium Card */}
-          <div className="bg-surface/40 backdrop-blur border border-white/10 rounded-2xl p-8 flex flex-col justify-center relative group hover:bg-surface/60 transition-colors">
-            <h3 className="font-mono text-xl text-ink mb-2">Any Data Source</h3>
-            <p className="text-sm text-muted">CSV, Excel, Postgres, MySQL, or public APIs.</p>
+          {/* Card 2: Connectors (Medium) */}
+          <div className={`${cardClasses} top-[12vh]`}>
+            <h3 className="font-mono text-xl text-ink mb-2">Universal Connectors</h3>
+            <p className="text-sm text-muted">Upload CSVs/Excel directly, or connect securely to live PostgreSQL and MySQL databases without any ETL.</p>
           </div>
 
-          {/* Medium Card */}
-          <div className="bg-surface/40 backdrop-blur border border-white/10 rounded-2xl p-8 flex flex-col justify-center relative group hover:bg-surface/60 transition-colors">
-            <h3 className="font-mono text-xl text-ink mb-2">Auto-Scaling</h3>
-            <p className="text-sm text-muted">Powered by Alibaba Cloud and Docker.</p>
+          {/* Card 3: Sandboxes (Medium) */}
+          <div className={`${cardClasses} top-[14vh]`}>
+            <h3 className="font-mono text-xl text-ink mb-2">Jupyter-grade Sandboxes</h3>
+            <p className="text-sm text-muted">Zero local setup. Every analysis runs in a dedicated Python environment with Pandas and Scikit-Learn pre-installed.</p>
+          </div>
+          
+          {/* Card 4: Reports (Medium) */}
+          <div className={`${cardClasses} top-[16vh]`}>
+            <h3 className="font-mono text-xl text-ink mb-2">Exportable Reports</h3>
+            <p className="text-sm text-muted">Automatically generate and download stunning, stakeholder-ready PDF and Markdown reports summarizing the AI's complex findings.</p>
           </div>
 
-          {/* Wide Card */}
-          <div className="md:col-span-3 bg-gradient-to-r from-signal/10 to-surface/40 backdrop-blur border border-white/10 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-8 group hover:border-signal/30 transition-colors">
+          {/* Card 5: Visualizations (Medium) */}
+          <div className={`${cardClasses} md:col-span-2 top-[18vh]`}>
+            <h3 className="font-mono text-xl text-ink mb-2">Real-Time Visualizations</h3>
+            <p className="text-sm text-muted">High-resolution, publication-ready charts generated instantly based on your data's patterns, ready for inspection and download.</p>
+          </div>
+
+          {/* Card 6: Qwen (Wide) */}
+          <div className={`${cardClasses} md:col-span-3 top-[20vh] md:flex-row md:items-center md:justify-between gap-8 bg-gradient-to-r from-signal/10 to-surface/95 md:to-surface/40`}>
             <div>
               <h3 className="font-mono text-2xl text-ink mb-2">Powered entirely by Qwen</h3>
               <p className="text-muted max-w-xl">Leveraging Qwen-Plus for advanced reasoning, Qwen-Coder for precise execution, and Qwen-Max for complex ML tasks.</p>
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-4 mt-6 md:mt-0">
               <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-signal font-mono text-xl animate-pulse">QP</div>
               <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-signal font-mono text-xl animate-pulse delay-75">QC</div>
               <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-signal font-mono text-xl animate-pulse delay-150">QM</div>

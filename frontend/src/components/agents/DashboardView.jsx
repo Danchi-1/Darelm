@@ -53,7 +53,7 @@ export default function DashboardView({ reportData }) {
             
             {section.chart_base64 ? (
               <div 
-                className="flex-1 bg-void p-4 flex items-center justify-center cursor-pointer relative"
+                className="flex-1 bg-void p-4 flex items-center justify-center cursor-pointer relative border-b border-border/50"
                 onClick={() => setFullScreenImage(section.chart_base64)}
               >
                 <img 
@@ -68,14 +68,25 @@ export default function DashboardView({ reportData }) {
                 </div>
               </div>
             ) : (
-              <div className="flex-1 p-6 flex items-center justify-center bg-void/50">
+              <div className="flex-1 p-6 flex items-center justify-center bg-void/50 border-b border-border/50">
                 <p className="text-muted text-sm italic font-mono">No visualization available</p>
               </div>
             )}
             
             {/* Expandable Context / Tooltip replacement: a neat footer area */}
-            <div className="p-5 bg-surface-raised/20 border-t border-border/50 text-sm text-muted leading-relaxed">
-              {section.narrative}
+            <div className="p-3 bg-surface-raised/20 border-t border-border/50">
+              <details className="group/details">
+                <summary className="text-xs font-mono text-muted cursor-pointer hover:text-signal transition-colors list-none flex items-center justify-center gap-2 py-1">
+                  <span className="group-open/details:hidden">Show Analyst Insights</span>
+                  <span className="hidden group-open/details:inline">Hide Analyst Insights</span>
+                  <svg className="w-4 h-4 transform transition-transform group-open/details:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </summary>
+                <div className="mt-3 text-sm text-muted leading-relaxed pb-2 px-2">
+                  {section.narrative}
+                </div>
+              </details>
             </div>
           </div>
         ))}

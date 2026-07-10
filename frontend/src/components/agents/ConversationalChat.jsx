@@ -398,7 +398,21 @@ export default function ConversationalChat() {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-6" ref={chatContainerRef} onScroll={handleScroll}>
-          {messages.map((message, index) => (
+          {messages.map((message, index) => {
+            let displayContent = message.content || '';
+            let extractedThought = message.thought || '';
+            
+            if (message.role === 'agent' && displayContent) {
+              const thoughtRegex = /<thought>([\s\S]*?)(?:<\/thought>|$)/g;
+              displayContent = displayContent.replace(thoughtRegex, (match, p1) => {
+                if (p1.trim()) {
+                  extractedThought += (extractedThought ? '\n\n' : '') + p1.trim();
+                }
+                return '';
+              });
+            }
+
+            return (
             <div
               key={index}
               className={`mb-6 ${
@@ -409,7 +423,7 @@ export default function ConversationalChat() {
                 {message.role === 'agent' && (
                   <>
                     {/* Agent Thoughts Section */}
-                    {(message.thought || message.toolCalls) && (
+                    {(extractedThought || message.toolCalls) && (
                       <div className="mb-3">
                         <div className="bg-surface-raised border border-border rounded-lg overflow-hidden transition-all duration-200">
                           <button
@@ -420,7 +434,7 @@ export default function ConversationalChat() {
                               {showThoughts ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                               <span className="flex items-center gap-2">
                                 Thought Process
-                                {isTyping && index === messages.length - 1 && !message.content && (
+                                {isTyping && index === messages.length - 1 && !displayContent && (
                                   <span className="flex gap-1 ml-1">
                                     <span className="w-1.5 h-1.5 bg-signal rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                                     <span className="w-1.5 h-1.5 bg-signal rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -439,9 +453,9 @@ export default function ConversationalChat() {
                           {showThoughts && (
                             <div className="p-3 border-t border-border/50 space-y-3 bg-surface/30">
                               {/* Thoughts */}
-                              {message.thought && (
+                              {extractedThought && (
                                 <div className="text-sm text-muted whitespace-pre-wrap font-mono leading-relaxed border-l-2 border-signal/30 pl-3">
-                                  {message.thought}
+                                  {extractedThought}
                                 </div>
                               )}
                               
@@ -469,7 +483,7 @@ export default function ConversationalChat() {
                         )
                       ) : (
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {message.content}
+                          {displayContent}
                         </ReactMarkdown>
                       )}
                     </div>
@@ -483,7 +497,8 @@ export default function ConversationalChat() {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {isTyping && (
             <div className="flex items-center gap-1 text-muted font-mono">

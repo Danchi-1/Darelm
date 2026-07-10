@@ -51,9 +51,9 @@ export default function DashboardView({ reportData }) {
               <h3 className="font-mono text-ink">{section.heading}</h3>
             </div>
             
-            {section.chart_base64 ? (
+            {section.chart_base64 && (
               <div 
-                className="flex-1 bg-void p-4 flex items-center justify-center cursor-pointer relative"
+                className="flex-1 bg-void p-4 flex items-center justify-center cursor-pointer relative border-b border-border/50"
                 onClick={() => setFullScreenImage(section.chart_base64)}
               >
                 <img 
@@ -67,14 +67,10 @@ export default function DashboardView({ reportData }) {
                   </span>
                 </div>
               </div>
-            ) : (
-              <div className="flex-1 p-6 flex items-center justify-center bg-void/50">
-                <p className="text-muted text-sm italic font-mono">No visualization available</p>
-              </div>
             )}
             
             {/* Expandable Context / Tooltip replacement: a neat footer area */}
-            <div className="p-5 bg-surface-raised/20 border-t border-border/50 text-sm text-muted leading-relaxed">
+            <div className={`p-5 bg-surface-raised/20 text-sm text-muted leading-relaxed ${!section.chart_base64 ? 'flex-1 flex items-center' : ''}`}>
               {section.narrative}
             </div>
           </div>

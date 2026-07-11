@@ -57,7 +57,13 @@ def get_dataset_context(dataset_id: str, db: Session) -> dict:
             result["schema"] = schema_dict
             result["sample"] = df.to_dict(orient="records")
         except Exception as e:
-            result["error_loading_schema"] = str(e)
+            err_str = str(e)
+            if "403" in err_str or "Forbidden" in err_str or "Expired" in err_str:
+                db.delete(dataset)
+                db.commit()
+                result["error"] = "The dataset URL has expired and was automatically deleted from your account. Please re-upload a fresh dataset."
+            else:
+                result["error_loading_schema"] = err_str
             
     elif dataset.dataset_type.lower() == "postgresql" and dataset.connection_string:
         from sqlalchemy import create_engine, inspect

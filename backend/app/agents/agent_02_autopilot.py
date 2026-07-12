@@ -68,7 +68,12 @@ async def start_autopilot(
     
     # Secure the sensitive URL from the LLM prompt
     original_dataset_path = dataset_context.get("url_or_connection", "")
-    sandbox_filename = "dataset.csv" if "csv" in dataset_context.get("dataset_type", "").lower() else "dataset.xlsx"
+    ext = ".csv" if "csv" in dataset_context.get("dataset_type", "").lower() else ".xlsx"
+    import re
+    dataset_name = dataset_context.get("dataset_name", f"dataset{ext}")
+    sandbox_filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', dataset_name)
+    if not sandbox_filename.lower().endswith(ext):
+        sandbox_filename += ext
     sandbox_path = f"/home/user/{sandbox_filename}"
     if original_dataset_path.startswith("http") or original_dataset_path.startswith("local://") or "/" in original_dataset_path:
         dataset_context["url_or_connection"] = f"{sandbox_path} (Use this exact path in pandas)"
@@ -162,9 +167,12 @@ async def confirm_autopilot(
             
             # Pre-load the dataset into the sandbox
             dataset_path = dataset_context.get("url_or_connection", "")
-            sandbox_filename = "dataset.csv"
-            if dataset_context.get("dataset_type", "").lower() == "excel":
-                sandbox_filename = "dataset.xlsx"
+            ext = ".csv" if "csv" in dataset_context.get("dataset_type", "").lower() else ".xlsx"
+            import re
+            dataset_name = dataset_context.get("dataset_name", f"dataset{ext}")
+            sandbox_filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', dataset_name)
+            if not sandbox_filename.lower().endswith(ext):
+                sandbox_filename += ext
                 
             if dataset_path:
                 if dataset_path.startswith("http"):

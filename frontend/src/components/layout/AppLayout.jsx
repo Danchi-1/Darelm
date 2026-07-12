@@ -33,7 +33,7 @@ export default function AppLayout({ children }) {
         <main className="flex-1 overflow-y-auto custom-scrollbar relative">
           <AnimatePresence mode="wait">
             <motion.div
-              key={location.pathname}
+              key={location.pathname.split('/')[1]}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}

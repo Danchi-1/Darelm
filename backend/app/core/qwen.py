@@ -84,7 +84,13 @@ class QwenClient:
             url_or_connection = dataset_context.get('url_or_connection', '')
             dataset_path_for_sandbox = url_or_connection
             ext = ".csv" if "csv" in dataset_context.get("dataset_type", "csv").lower() else ".xlsx"
-            sandbox_filename = f"/home/user/dataset{ext}"
+            
+            import re
+            dataset_name = dataset_context.get("dataset_name", f"dataset{ext}")
+            safe_name = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', dataset_name)
+            if not safe_name.lower().endswith(ext):
+                safe_name += ext
+            sandbox_filename = f"/home/user/{safe_name}"
             
             if url_or_connection.startswith('http') or url_or_connection.startswith('local://') or '/' in url_or_connection:
                 url_or_connection = f"{sandbox_filename} (Use this exact path in pandas)"

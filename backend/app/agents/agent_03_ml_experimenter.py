@@ -65,7 +65,12 @@ async def start_ml_experiment(
     
     # Secure the sensitive URL from the LLM prompt
     original_dataset_path = dataset_context.get("url_or_connection", "")
-    sandbox_filename = "dataset.csv" if "csv" in dataset_context.get("dataset_type", "").lower() else "dataset.xlsx"
+    ext = ".csv" if "csv" in dataset_context.get("dataset_type", "").lower() else ".xlsx"
+    import re
+    dataset_name = dataset_context.get("dataset_name", f"dataset{ext}")
+    sandbox_filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', dataset_name)
+    if not sandbox_filename.lower().endswith(ext):
+        sandbox_filename += ext
     sandbox_path = f"/home/user/{sandbox_filename}"
     if original_dataset_path.startswith("http") or original_dataset_path.startswith("local://") or "/" in original_dataset_path:
         dataset_context["url_or_connection"] = f"{sandbox_path} (Use this exact path in pandas)"
@@ -171,7 +176,12 @@ async def execute_ml_experiment(
     storage_url = dataset_context.get("url_or_connection", "")
     
     # Mask URL for LLM context
-    sandbox_filename = "dataset.xlsx" if dataset_context.get("dataset_type", "").lower() == "excel" else "dataset.csv"
+    ext = ".csv" if "csv" in dataset_context.get("dataset_type", "").lower() else ".xlsx"
+    import re
+    dataset_name = dataset_context.get("dataset_name", f"dataset{ext}")
+    sandbox_filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', dataset_name)
+    if not sandbox_filename.lower().endswith(ext):
+        sandbox_filename += ext
     if storage_url.startswith("http") or storage_url.startswith("local://") or "/" in storage_url:
         dataset_context["url_or_connection"] = f"/home/user/{sandbox_filename} (Use this exact path in pandas)"
     

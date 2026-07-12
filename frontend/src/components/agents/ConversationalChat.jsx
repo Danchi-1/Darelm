@@ -22,6 +22,7 @@ export default function ConversationalChat() {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+  const isStreamingRef = useRef(false);
   const [autoScroll, setAutoScroll] = useState(true);
 
   const handleScroll = () => {
@@ -41,6 +42,8 @@ export default function ConversationalChat() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (isStreamingRef.current) return; // Prevent race condition when URL updates mid-stream
+
     const fetchData = async () => {
       setIsLoadingData(true);
       setMessages([]);
@@ -175,6 +178,7 @@ export default function ConversationalChat() {
     // Add an empty agent message to stream into
     setMessages((prev) => [...prev, { role: 'agent', content: '' }]);
 
+    isStreamingRef.current = true;
     try {
       const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
       
@@ -325,6 +329,7 @@ export default function ConversationalChat() {
       });
     } finally {
       setIsTyping(false);
+      isStreamingRef.current = false;
     }
   };
 

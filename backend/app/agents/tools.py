@@ -102,8 +102,11 @@ def execute_python_sandbox(code: str, dataset_path: str = None, sandbox_filename
         with Sandbox.create(timeout=300) as sandbox:
             if dataset_path and sandbox_filename:
                 if dataset_path.startswith("http"):
+                    import json
+                    safe_url = json.dumps(dataset_path)
+                    safe_filename = json.dumps(sandbox_filename)
                     # Hide the URL from LLM by downloading it securely inside the sandbox before AI code runs
-                    download_code = f"import urllib.request\ntry:\n    urllib.request.urlretrieve('{dataset_path}', '{sandbox_filename}')\nexcept Exception as e:\n    print('Failed to securely download dataset inside sandbox:', e)\n\n"
+                    download_code = f"import urllib.request\ntry:\n    urllib.request.urlretrieve({safe_url}, {safe_filename})\nexcept Exception as e:\n    print('Failed to securely download dataset inside sandbox:', e)\n\n"
                     code = download_code + code
                 else:
                     try:

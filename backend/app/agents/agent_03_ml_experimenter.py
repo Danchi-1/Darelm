@@ -221,10 +221,13 @@ async def execute_ml_experiment(
                 print("[EXECUTOR] Installing required packages in sandbox...")
                 await asyncio.to_thread(sandbox.commands.run, "pip install openpyxl xlrd", timeout=60)
                 
+                import json
+                safe_url = json.dumps(storage_url)
+                safe_filename = json.dumps(f"/home/user/{sandbox_filename}")
                 download_code = f"""
 import urllib.request
 try:
-    urllib.request.urlretrieve('{storage_url}', '/home/user/{sandbox_filename}')
+    urllib.request.urlretrieve({safe_url}, {safe_filename})
     print("Dataset downloaded successfully")
 except Exception as e:
     raise Exception("Failed to download dataset: " + str(e))

@@ -180,7 +180,10 @@ async def confirm_autopilot(
                     yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Downloading secure dataset...'})}\n\n"
                     
                     def download_to_sandbox(sb, url, filename):
-                        download_script = f"import urllib.request\ntry:\n    urllib.request.urlretrieve('{url}', '{filename}')\nexcept Exception as e:\n    print('Failed to securely download dataset inside sandbox:', e)\n"
+                        import json
+                        safe_url = json.dumps(url)
+                        safe_filename = json.dumps(filename)
+                        download_script = f"import urllib.request\ntry:\n    urllib.request.urlretrieve({safe_url}, {safe_filename})\nexcept Exception as e:\n    print('Failed to securely download dataset inside sandbox:', e)\n"
                         sb.run_code(download_script)
                         
                     download_task = asyncio.create_task(

@@ -100,47 +100,52 @@ def execute_python_sandbox(code: str, dataset_path: str = None, sandbox_filename
 
     try:
         with Sandbox.create(timeout=300) as sandbox:
-            if dataset_path and sandbox_filename and not dataset_path.startswith("http"):
-                try:
-                    if dataset_path.startswith("local://"):
-                        dataset_path = dataset_path.replace("local://", "")
-                    abs_path = os.path.abspath(dataset_path)
-                    
-                    import time
-                    wait_loops = 0
-                    # Wait if it's currently being compressed in the background
-                    while not os.path.exists(abs_path) and not os.path.exists(f"{abs_path}.gz") and wait_loops < 60:
-                        if os.path.exists(f"{abs_path}.gz.tmp"):
-                            time.sleep(2)
-                            wait_loops += 1
+            if dataset_path and sandbox_filename:
+                if dataset_path.startswith("http"):
+                    # Hide the URL from LLM by downloading it securely inside the sandbox before AI code runs
+                    download_code = f"import urllib.request\ntry:\n    urllib.request.urlretrieve('{dataset_path}', '{sandbox_filename}')\nexcept Exception as e:\n    print('Failed to securely download dataset inside sandbox:', e)\n\n"
+                    code = download_code + code
+                else:
+                    try:
+                        if dataset_path.startswith("local://"):
+                            dataset_path = dataset_path.replace("local://", "")
+                        abs_path = os.path.abspath(dataset_path)
+                        
+                        import time
+                        wait_loops = 0
+                        # Wait if it's currently being compressed in the background
+                        while not os.path.exists(abs_path) and not os.path.exists(f"{abs_path}.gz") and wait_loops < 60:
+                            if os.path.exists(f"{abs_path}.gz.tmp"):
+                                time.sleep(2)
+                                wait_loops += 1
+                            else:
+                                break
+                                
+                        # If the async task finished and deleted the .csv, fallback to .gz
+                        if not os.path.exists(abs_path) and os.path.exists(f"{abs_path}.gz"):
+                            abs_path = f"{abs_path}.gz"
+                        
+                        if abs_path.endswith('.gz'):
+                            # Chunked upload for compressed massive datasets
+                            with open(abs_path, 'rb') as f:
+                                chunk_size = 5 * 1024 * 1024
+                                part_num = 0
+                                while True:
+                                    chunk = f.read(chunk_size)
+                                    if not chunk:
+                                        break
+                                    sandbox.files.write(f"{sandbox_filename}.gz.part{part_num}", chunk)
+                                    part_num += 1
+                            # Reconstruct and unzip inside sandbox
+                            sandbox.commands.run(f"cat {sandbox_filename}.gz.part* > {sandbox_filename}.gz && rm {sandbox_filename}.gz.part*")
+                            # Prepend python code to unzip the dataset before the AI code runs
+                            unzip_code = f"import gzip, shutil; \nwith gzip.open('{sandbox_filename}.gz', 'rb') as f_in:\n  with open('{sandbox_filename}', 'wb') as f_out:\n    shutil.copyfileobj(f_in, f_out)\n"
+                            code = unzip_code + code
                         else:
-                            break
-                            
-                    # If the async task finished and deleted the .csv, fallback to .gz
-                    if not os.path.exists(abs_path) and os.path.exists(f"{abs_path}.gz"):
-                        abs_path = f"{abs_path}.gz"
-                    
-                    if abs_path.endswith('.gz'):
-                        # Chunked upload for compressed massive datasets
-                        with open(abs_path, 'rb') as f:
-                            chunk_size = 5 * 1024 * 1024
-                            part_num = 0
-                            while True:
-                                chunk = f.read(chunk_size)
-                                if not chunk:
-                                    break
-                                sandbox.files.write(f"{sandbox_filename}.gz.part{part_num}", chunk)
-                                part_num += 1
-                        # Reconstruct and unzip inside sandbox
-                        sandbox.commands.run(f"cat {sandbox_filename}.gz.part* > {sandbox_filename}.gz && rm {sandbox_filename}.gz.part*")
-                        # Prepend python code to unzip the dataset before the AI code runs
-                        unzip_code = f"import gzip, shutil; \nwith gzip.open('{sandbox_filename}.gz', 'rb') as f_in:\n  with open('{sandbox_filename}', 'wb') as f_out:\n    shutil.copyfileobj(f_in, f_out)\n"
-                        code = unzip_code + code
-                    else:
-                        with open(abs_path, 'rb') as f:
-                            sandbox.files.write(sandbox_filename, f.read())
-                except Exception as e:
-                    return f"Error uploading dataset to sandbox: {str(e)}"
+                            with open(abs_path, 'rb') as f:
+                                sandbox.files.write(sandbox_filename, f.read())
+                    except Exception as e:
+                        return f"Error uploading dataset to sandbox: {str(e)}"
                     
             execution = sandbox.run_code(code)
             

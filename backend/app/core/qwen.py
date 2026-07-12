@@ -82,12 +82,12 @@ class QwenClient:
         
         if dataset_context:
             url_or_connection = dataset_context.get('url_or_connection', '')
-            if not url_or_connection.startswith('http'):
-                dataset_path_for_sandbox = url_or_connection
-                ext = ".csv" if "csv" in dataset_context.get("dataset_type", "csv").lower() else ".xlsx"
-                sandbox_filename = f"/home/user/dataset{ext}"
+            dataset_path_for_sandbox = url_or_connection
+            ext = ".csv" if "csv" in dataset_context.get("dataset_type", "csv").lower() else ".xlsx"
+            sandbox_filename = f"/home/user/dataset{ext}"
+            
+            if url_or_connection.startswith('http') or url_or_connection.startswith('local://') or '/' in url_or_connection:
                 url_or_connection = f"{sandbox_filename} (Use this exact path in pandas)"
-                
             context_msg = f"""
 Dataset Loaded:
 - Name: {dataset_context.get('dataset_name')}

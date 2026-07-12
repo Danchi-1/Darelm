@@ -66,6 +66,13 @@ async def start_autopilot(
         
     db.commit() # Release DB connection back to the pool to prevent timeout during long LLM call
     
+    # Secure the sensitive URL from the LLM prompt
+    original_dataset_path = dataset_context.get("url_or_connection", "")
+    sandbox_filename = "dataset.csv" if "csv" in dataset_context.get("dataset_type", "").lower() else "dataset.xlsx"
+    sandbox_path = f"/home/user/{sandbox_filename}"
+    if original_dataset_path.startswith("http") or original_dataset_path.startswith("local://") or "/" in original_dataset_path:
+        dataset_context["url_or_connection"] = f"{sandbox_path} (Use this exact path in pandas)"
+        
     # 1. Run Planner LLM
     context_str = f"""USER GOAL:
 {payload.goal}
@@ -159,9 +166,22 @@ async def confirm_autopilot(
             if dataset_context.get("dataset_type", "").lower() == "excel":
                 sandbox_filename = "dataset.xlsx"
                 
-            if dataset_path and not dataset_path.startswith("http"):
-                print(f"[EXECUTOR] Uploading dataset {dataset_path} to sandbox...")
-                yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Compressing and uploading dataset...'})}\n\n"
+            if dataset_path:
+                if dataset_path.startswith("http"):
+                    print(f"[EXECUTOR] Downloading HTTP dataset to sandbox...")
+                    yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Downloading secure dataset...'})}\n\n"
+                    
+                    def download_to_sandbox(sb, url, filename):
+                        download_script = f"import urllib.request\ntry:\n    urllib.request.urlretrieve('{url}', '{filename}')\nexcept Exception as e:\n    print('Failed to securely download dataset inside sandbox:', e)\n"
+                        sb.run_code(download_script)
+                        
+                    download_task = asyncio.create_task(
+                        asyncio.to_thread(download_to_sandbox, sandbox, dataset_path, sandbox_filename)
+                    )
+                    await download_task
+                else:
+                    print(f"[EXECUTOR] Uploading dataset {dataset_path} to sandbox...")
+                    yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Compressing and uploading dataset...'})}\n\n"
                 
                 if dataset_path.startswith("local://"):
                     dataset_path = dataset_path.replace("local://", "")

@@ -4,6 +4,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 import Button from '../components/ui/Button';
 import Toast from '../components/ui/Toast';
+import DataNodesAnimation from '../components/ui/DataNodesAnimation';
 import { api } from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 
@@ -76,12 +77,13 @@ export default function Register() {
       
       {/* Left side - coordinate grid */}
       <div className="hidden md:flex w-1/2 coordinate-grid relative">
-        <div className="absolute inset-0 bg-void/90 flex items-center justify-center">
+        <DataNodesAnimation />
+        <div className="absolute inset-0 bg-void/80 flex items-center justify-center z-10">
           <div className="text-center">
-            <Link to="/" className="font-mono text-4xl text-ink mb-4 block hover:text-signal transition-colors cursor-pointer">
+            <Link to="/" className="font-mono text-4xl text-ink mb-4 block hover:text-signal transition-colors cursor-pointer drop-shadow-md">
               Darelm
             </Link>
-            <p className="text-muted text-sm">
+            <p className="text-muted text-sm drop-shadow">
               Qwen-powered data intelligence platform
             </p>
           </div>

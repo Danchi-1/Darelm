@@ -207,75 +207,75 @@ async def confirm_autopilot(
                 else:
                     print(f"[EXECUTOR] Uploading dataset {dataset_path} to sandbox...")
                     yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Compressing and uploading dataset...'})}\n\n"
-                
-                if dataset_path.startswith("local://"):
-                    dataset_path = dataset_path.replace("local://", "")
-                abs_path = os.path.abspath(dataset_path)
-                
-                # If the path already points to a .gz file (because get_dataset_context found it), we don't need to append .gz again.
-                if abs_path.endswith('.gz'):
-                    gz_path = abs_path
-                    raw_path = abs_path[:-3] # The original .csv path
-                else:
-                    raw_path = abs_path
-                    gz_path = f"{abs_path}.gz"
-                
-                # UX: Get size in MB
-                file_size_mb = 0
-                if os.path.exists(raw_path):
-                    file_size_mb = round(os.path.getsize(raw_path) / (1024 * 1024), 1)
-                elif os.path.exists(gz_path):
-                    file_size_mb = round(os.path.getsize(gz_path) / (1024 * 1024), 1)
-
-                import gzip
-                import time
-                
-                def wait_and_upload(sb, raw_path, gz, filename):
-                    # Fallback compression if background task failed or didn't run
-                    if not os.path.exists(gz) and not os.path.exists(f"{raw_path}.gz.tmp"):
-                        if os.path.exists(raw_path):
-                            with open(raw_path, 'rb') as f_in:
-                                with gzip.open(gz, 'wb') as f_out:
-                                    f_out.writelines(f_in)
                     
-                    # Wait for background task if it's currently compressing
-                    wait_loops = 0
-                    while not os.path.exists(gz) and wait_loops < 60:
-                        time.sleep(2)
-                        wait_loops += 1
-                        
-                    if not os.path.exists(gz):
-                        raise Exception("Compression failed or timed out")
-                        
-                    # Upload in 5MB chunks to bypass E2B payload limits
-                    with open(gz, 'rb') as f:
-                        chunk_size = 5 * 1024 * 1024
-                        part_num = 0
-                        while True:
-                            chunk = f.read(chunk_size)
-                            if not chunk:
-                                break
-                            sb.files.write(f"{filename}.gz.part{part_num}", chunk)
-                            part_num += 1
-                            
-                    # Concatenate chunks inside the sandbox
-                    sb.commands.run(f"cat {filename}.gz.part* > {filename}.gz && rm {filename}.gz.part*")
+                    if dataset_path.startswith("local://"):
+                        dataset_path = dataset_path.replace("local://", "")
+                    abs_path = os.path.abspath(dataset_path)
+                    
+                    # If the path already points to a .gz file (because get_dataset_context found it), we don't need to append .gz again.
+                    if abs_path.endswith('.gz'):
+                        gz_path = abs_path
+                        raw_path = abs_path[:-3] # The original .csv path
+                    else:
+                        raw_path = abs_path
+                        gz_path = f"{abs_path}.gz"
+                    
+                    # UX: Get size in MB
+                    file_size_mb = 0
+                    if os.path.exists(raw_path):
+                        file_size_mb = round(os.path.getsize(raw_path) / (1024 * 1024), 1)
+                    elif os.path.exists(gz_path):
+                        file_size_mb = round(os.path.getsize(gz_path) / (1024 * 1024), 1)
 
-                upload_task = asyncio.create_task(
-                    asyncio.to_thread(wait_and_upload, sandbox, raw_path, gz_path, sandbox_filename)
-                )
-                
-                timer = 0
-                while not upload_task.done():
-                    await asyncio.sleep(2)
-                    timer += 2
-                    if timer % 10 == 0:
-                        msg = f"Your dataset ({file_size_mb}MB) is very large. Optimizing and securely transferring to the cloud environment... ({timer}s elapsed)"
-                        yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': msg})}\n\n"
+                    import gzip
+                    import time
+                    
+                    def wait_and_upload(sb, raw_path, gz, filename):
+                        # Fallback compression if background task failed or didn't run
+                        if not os.path.exists(gz) and not os.path.exists(f"{raw_path}.gz.tmp"):
+                            if os.path.exists(raw_path):
+                                with open(raw_path, 'rb') as f_in:
+                                    with gzip.open(gz, 'wb') as f_out:
+                                        f_out.writelines(f_in)
                         
-                # Raise if the thread threw an exception
-                upload_task.result()
-                print("[EXECUTOR] Dataset uploaded (compressed).")                    
+                        # Wait for background task if it's currently compressing
+                        wait_loops = 0
+                        while not os.path.exists(gz) and wait_loops < 60:
+                            time.sleep(2)
+                            wait_loops += 1
+                            
+                        if not os.path.exists(gz):
+                            raise Exception("Compression failed or timed out")
+                            
+                        # Upload in 5MB chunks to bypass E2B payload limits
+                        with open(gz, 'rb') as f:
+                            chunk_size = 5 * 1024 * 1024
+                            part_num = 0
+                            while True:
+                                chunk = f.read(chunk_size)
+                                if not chunk:
+                                    break
+                                sb.files.write(f"{filename}.gz.part{part_num}", chunk)
+                                part_num += 1
+                                
+                        # Concatenate chunks inside the sandbox
+                        sb.commands.run(f"cat {filename}.gz.part* > {filename}.gz && rm {filename}.gz.part*")
+
+                    upload_task = asyncio.create_task(
+                        asyncio.to_thread(wait_and_upload, sandbox, raw_path, gz_path, sandbox_filename)
+                    )
+                
+                    timer = 0
+                    while not upload_task.done():
+                        await asyncio.sleep(2)
+                        timer += 2
+                        if timer % 10 == 0:
+                            msg = f"Your dataset ({file_size_mb}MB) is very large. Optimizing and securely transferring to the cloud environment... ({timer}s elapsed)"
+                            yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': msg})}\n\n"
+                            
+                    # Raise if the thread threw an exception
+                    upload_task.result()
+                    print("[EXECUTOR] Dataset uploaded (compressed).")                    
             # Run initial import script to make df available globally
             yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Initializing Python environment...'})}\n\n"
             download_code = ""

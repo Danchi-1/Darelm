@@ -108,6 +108,11 @@ After your `<thought>` block, provide the final, polished, direct answer to the 
         session = db.query(ChatSession).filter(ChatSession.id == request.session_id, ChatSession.user_id == current_user.id).first()
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
+            
+        # Hot-swap dataset if the user changed it mid-session
+        if request.dataset_id and str(session.dataset_id) != str(request.dataset_id):
+            session.dataset_id = request.dataset_id
+            db.commit()
     else:
         # Generate a short title from the first message
         title_prompt = f"Generate a concise 3 to 4 word title for this data analysis query: '{request.message}'. Do not use quotes, periods, or the word 'title'."

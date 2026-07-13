@@ -35,9 +35,9 @@ class Dataset(Base):
     last_accessed_at = Column(DateTime(timezone=True), server_default=func.now())
 
     owner = relationship("User", back_populates="datasets")
-    chat_sessions = relationship("ChatSession", back_populates="dataset", cascade="all, delete-orphan")
-    autopilot_sessions = relationship("AutopilotSession", back_populates="dataset", cascade="all, delete-orphan")
-    ml_sessions = relationship("MLExperimentSession", back_populates="dataset", cascade="all, delete-orphan")
+    chat_sessions = relationship("ChatSession", back_populates="dataset")
+    autopilot_sessions = relationship("AutopilotSession", back_populates="dataset")
+    ml_sessions = relationship("MLExperimentSession", back_populates="dataset")
 
     @property
     def connection_string(self):

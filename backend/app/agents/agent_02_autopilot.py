@@ -266,11 +266,12 @@ async def confirm_autopilot(
                     )
                 
                     timer = 0
+                    dataset_name = dataset_context.get('dataset_name', 'Dataset')
                     while not upload_task.done():
                         await asyncio.sleep(2)
                         timer += 2
                         if timer % 10 == 0:
-                            msg = f"Your dataset ({file_size_mb}MB) is very large. Optimizing and securely transferring to the cloud environment... ({timer}s elapsed)"
+                            msg = f"'{dataset_name}' ({file_size_mb}MB) is very large. Optimizing and securely transferring to the cloud environment... ({timer}s elapsed)"
                             yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': msg})}\n\n"
                             
                     # Raise if the thread threw an exception

@@ -44,6 +44,17 @@ export default function AutopilotFlow() {
           } else if (data.status === 'executing') {
             setPhase('execution');
             setExecutingMessage('Session is currently executing or failed to finish cleanly.');
+            
+            if (data.steps && data.steps.length > 0) {
+              const completedIdxs = data.steps
+                .filter(s => s.status === 'completed')
+                .map(s => s.step_index - 1);
+              setCompletedSteps(completedIdxs);
+              
+              if (completedIdxs.length > 0) {
+                setCurrentStep(Math.max(...completedIdxs) + 1);
+              }
+            }
           }
         } catch (error) {
           console.error('Failed to fetch autopilot session:', error);
@@ -272,8 +283,17 @@ export default function AutopilotFlow() {
       case 'execution':
         return (
           <div className="max-w-2xl mx-auto">
-            <h2 className="font-mono text-2xl text-ink mb-2">Executing analysis</h2>
-            <p className="text-muted mb-6 font-mono text-sm">{executingMessage || 'Initializing...'}</p>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="font-mono text-2xl text-ink mb-2">Executing analysis</h2>
+                <p className="text-muted font-mono text-sm">{executingMessage || 'Initializing...'}</p>
+              </div>
+              {executingMessage.includes('failed to finish cleanly') && (
+                <Button variant="primary" size="sm" onClick={handleConfirmPlan}>
+                  Resume Execution
+                </Button>
+              )}
+            </div>
             <div className="space-y-3">
               {steps.map((step, index) => {
                 const isCompleted = completedSteps.includes(index);
@@ -369,7 +389,7 @@ export default function AutopilotFlow() {
                 </p>
               </div>
 
-              {reportData.sections && reportData.sections.map((section, idx) => (
+              {Array.isArray(reportData.sections) && reportData.sections.map((section, idx) => (
                 <div key={idx} className="bg-surface border border-border rounded-card p-6">
                   <div className="flex justify-between items-start mb-4">
                     <h3 className="font-mono text-lg text-ink">{section.heading}</h3>
@@ -391,7 +411,7 @@ export default function AutopilotFlow() {
               ))}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {reportData.conclusions && reportData.conclusions.length > 0 && (
+                {Array.isArray(reportData.conclusions) && reportData.conclusions.length > 0 && (
                   <div className="bg-surface border border-border rounded-card p-6">
                     <h3 className="font-mono text-lg text-ink mb-4">Conclusions</h3>
                     <ul className="space-y-2">
@@ -404,7 +424,7 @@ export default function AutopilotFlow() {
                   </div>
                 )}
                 
-                {reportData.recommendations && reportData.recommendations.length > 0 && (
+                {Array.isArray(reportData.recommendations) && reportData.recommendations.length > 0 && (
                   <div className="bg-surface border border-border rounded-card p-6">
                     <h3 className="font-mono text-lg text-ink mb-4">Recommendations</h3>
                     <ul className="space-y-2">

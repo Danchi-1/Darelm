@@ -156,14 +156,28 @@ async def confirm_autopilot(
             print("[EXECUTOR] Starting executor_stream...")
             yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Provisioning secure analytical sandbox...'})}\n\n"
             
-            # Start E2B Sandbox with long timeout (30 mins = 1800s)
-            print("[EXECUTOR] Creating E2B sandbox (in threadpool)...")
-            sandbox = await asyncio.to_thread(Sandbox.create, timeout=1800, api_key=settings.E2B_API_KEY)
-            print(f"[EXECUTOR] Sandbox created: {sandbox.sandbox_id}")
-            
+            # Start or Connect to E2B Sandbox (30 mins = 1800s)
+            sandbox_id = None
             with SessionLocal() as db:
-                db.query(AutopilotSession).filter(AutopilotSession.id == session_id_str).update({"sandbox_id": sandbox.sandbox_id})
-                db.commit()
+                ap_session = db.query(AutopilotSession).filter(AutopilotSession.id == session_id_str).first()
+                if ap_session:
+                    sandbox_id = ap_session.sandbox_id
+
+            if sandbox_id:
+                try:
+                    print(f"[EXECUTOR] Reconnecting to existing sandbox {sandbox_id}...")
+                    sandbox = await asyncio.to_thread(Sandbox.connect, sandbox_id)
+                except Exception as e:
+                    print(f"[EXECUTOR] Failed to reconnect, creating new sandbox...")
+                    sandbox = None
+            
+            if not sandbox:
+                print("[EXECUTOR] Creating new E2B sandbox (in threadpool)...")
+                sandbox = await asyncio.to_thread(Sandbox.create, timeout=1800, api_key=settings.E2B_API_KEY)
+                with SessionLocal() as db:
+                    db.query(AutopilotSession).filter(AutopilotSession.id == session_id_str).update({"sandbox_id": sandbox.sandbox_id})
+                    db.commit()
+            print(f"[EXECUTOR] Sandbox active: {sandbox.sandbox_id}")
             
             # Pre-load the dataset into the sandbox
             dataset_path = dataset_context.get("url_or_connection", "")
@@ -318,6 +332,20 @@ except Exception as e:
             print(f"[EXECUTOR] Starting Phase 2 loops for {len(steps)} steps...")
             for step in steps:
                 step_id = step.get("id")
+                
+                # Check if step is already completed (for resuming sessions)
+                with SessionLocal() as db:
+                    existing_step = db.query(AutopilotStep).filter(AutopilotStep.session_id == session_id_str, AutopilotStep.step_index == step_id).first()
+                    if existing_step and existing_step.status == "completed":
+                        print(f"[EXECUTOR] Step {step_id} already completed, resuming...")
+                        try:
+                            f_json = json.loads(existing_step.findings_json)
+                            if f_json:
+                                all_findings[f"step_{step_id}"] = f_json.get("findings", {})
+                        except:
+                            pass
+                        continue
+                
                 step_title = step.get("title", "")
                 yield f"data: {json.dumps({'status': 'executing_step', 'step': step_id, 'message': f'Starting: {step_title}'})}\n\n"
                 
@@ -537,6 +565,16 @@ COMPLETED FINDINGS:
                 db.commit()
             
             yield f"data: {json.dumps({'status': 'completed', 'report': report_json})}\n\n"
+            
+            # Cleanup sandbox now that session is successfully completed
+            if sandbox:
+                try:
+                    await asyncio.to_thread(sandbox.kill)
+                    with SessionLocal() as db:
+                        db.query(AutopilotSession).filter(AutopilotSession.id == session_id_str).update({"sandbox_id": None})
+                        db.commit()
+                except:
+                    pass
 
         except Exception as e:
             yield f"data: {json.dumps({'status': 'error', 'message': str(e)})}\n\n"
@@ -549,15 +587,9 @@ COMPLETED FINDINGS:
                 pass
                 
         finally:
-            if sandbox:
-                await asyncio.to_thread(sandbox.kill)
-            try:
-                from app.db.session import SessionLocal
-                with SessionLocal() as db:
-                    db.query(AutopilotSession).filter(AutopilotSession.id == session_id_str).update({"sandbox_id": None})
-                    db.commit()
-            except:
-                pass
+            # Leave sandbox alive so user can resume later
+            # It will naturally timeout according to the Sandbox timeout parameter (1800s)
+            pass
 
     db.commit() # Release DB connection back to the pool to prevent deadlock
     return StreamingResponse(

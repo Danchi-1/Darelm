@@ -40,7 +40,7 @@ export default function DashboardView({ reportData }) {
               
               {/* Card Header */}
               <div className="p-4 border-b border-border/50 flex justify-between items-center bg-transparent">
-                <h3 className="font-sans text-ink text-xs font-semibold uppercase tracking-wider line-clamp-1 pr-4 opacity-80">{section.heading}</h3>
+                <h3 className="font-sans text-ink text-xs font-semibold uppercase tracking-wider line-clamp-2 pr-4 opacity-80">{section.heading}</h3>
                 {safeKeyStat && safeKeyStat !== 'N/A' && section.chart_base64 && (
                   <span className="text-xl font-sans text-signal font-bold leading-none tracking-tight">{safeKeyStat}</span>
                 )}
@@ -59,7 +59,7 @@ export default function DashboardView({ reportData }) {
                   />
                 </div>
               ) : (
-                <div className="flex-1 p-8 flex flex-col items-center justify-center bg-transparent border-b border-border/20 min-h-[160px] relative">
+                <div className="flex-1 p-6 flex flex-col items-center justify-center bg-transparent border-b border-border/20 min-h-[160px] relative">
                   {bigStat ? (
                     <>
                       <div className="text-5xl md:text-6xl font-sans text-signal mb-1 relative z-10 font-bold tracking-tight">
@@ -74,7 +74,7 @@ export default function DashboardView({ reportData }) {
                   ) : (
                     <div className="text-4xl mb-4 opacity-20">📊</div>
                   )}
-                  <p className="text-muted/60 text-center text-xs font-sans max-w-[85%] relative z-10 leading-snug pt-2">
+                  <p className="text-muted/60 text-center text-xs font-sans max-w-[90%] relative z-10 leading-relaxed pt-2 line-clamp-4">
                     {section.narrative}
                   </p>
                 </div>

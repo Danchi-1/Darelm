@@ -34,8 +34,9 @@ export default function DashboardView({ reportData }) {
           if (span === 3) spanClass = 'lg:col-span-3';
           else if (span === 2) spanClass = 'lg:col-span-2';
           
-          // Extract the first word/number for big KPI display if it's not a chart
-          const bigStat = section.key_stat && section.key_stat !== 'N/A' ? section.key_stat.split(' ')[0] : null;
+          // Coerce to string to prevent fatal crashes if LLM returns a number instead of a string
+          const safeKeyStat = section.key_stat !== undefined && section.key_stat !== null ? String(section.key_stat) : '';
+          const bigStat = safeKeyStat && safeKeyStat !== 'N/A' ? safeKeyStat.split(' ')[0] : null;
 
           return (
             <div key={idx} className={`bg-surface border border-border rounded-card flex flex-col overflow-hidden hover:border-signal transition-all duration-300 group ${spanClass}`}>
@@ -44,8 +45,8 @@ export default function DashboardView({ reportData }) {
               <div className="p-5 border-b border-border/50 flex flex-col justify-between items-start bg-surface-raised/10">
                 <div className="flex justify-between items-start w-full">
                   <h3 className="font-sans text-ink text-[13px] font-semibold uppercase tracking-wider mb-1 line-clamp-2 pr-4">{section.heading}</h3>
-                  {section.key_stat && section.key_stat !== 'N/A' && section.chart_base64 && (
-                    <span className="text-2xl font-mono text-signal font-bold leading-none tracking-tight">{section.key_stat}</span>
+                  {safeKeyStat && safeKeyStat !== 'N/A' && section.chart_base64 && (
+                    <span className="text-2xl font-mono text-signal font-bold leading-none tracking-tight">{safeKeyStat}</span>
                   )}
                 </div>
               </div>
@@ -77,9 +78,9 @@ export default function DashboardView({ reportData }) {
                       <div className="text-6xl md:text-7xl font-mono text-signal mb-2 relative z-10 font-bold tracking-tighter">
                         {bigStat}
                       </div>
-                      {section.key_stat.replace(bigStat, '').trim() && (
+                      {safeKeyStat.replace(bigStat, '').trim() && (
                         <div className="text-[13px] font-sans text-muted mb-6 text-center relative z-10 uppercase tracking-wider font-semibold">
-                          {section.key_stat.replace(bigStat, '').trim()}
+                          {safeKeyStat.replace(bigStat, '').trim()}
                         </div>
                       )}
                     </>

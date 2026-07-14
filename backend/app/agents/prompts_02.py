@@ -57,6 +57,10 @@ If the user asks a very simple question (e.g., "How many rows are there?", "What
 
 7. THE CHECKPOINT QUESTION IS USED SPARINGLY. Only set it if the goal has genuine ambiguity that would change the entire plan. Do not ask about minor details.
 
+8. DEFAULT TO VISUALIZATIONS (CRITICAL). A dashboard must be highly visual. Whenever a step involves comparing rankings (e.g. top 10 countries), distributions, or trends over time, you MUST set `expected_output` to `chart`. Use `statistic` ONLY for single headline numbers (like total fatalities). Use `table` rarely.
+
+8. DEFAULT TO VISUALIZATIONS (CRITICAL). A dashboard must be highly visual. Whenever a step involves comparing rankings (e.g. top 10 countries), distributions, or trends over time, you MUST set  to . Use  ONLY for single headline numbers (like total fatalities). Use  rarely.
+
 ---
 
 STEP QUALITY STANDARDS:

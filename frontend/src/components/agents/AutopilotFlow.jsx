@@ -6,6 +6,7 @@ import Badge from '../ui/Badge';
 import { useToastStore } from '../../store/toastStore';
 import { api } from '../../lib/api';
 import DashboardView from './DashboardView';
+import ChartRenderer from './ChartRenderer';
 
 const phases = ['goal', 'planning', 'execution', 'report'];
 
@@ -402,9 +403,9 @@ export default function AutopilotFlow() {
                   
                   <p className="text-muted mb-6 leading-relaxed">{section.narrative}</p>
                   
-                  {section.chart_base64 && (
-                    <div className="mt-4 rounded-card overflow-hidden border border-border bg-surface-raised p-2 cursor-pointer transition-colors hover:border-signal" onClick={() => setFullScreenImage(section.chart_base64)} title="Click to enlarge">
-                      <img src={section.chart_base64} alt={`Chart for ${section.heading}`} className="w-full h-auto object-contain max-h-96" />
+                  {section.has_chart && section.chart_spec && (
+                    <div className="mt-4 rounded-card overflow-hidden border border-border bg-surface-raised/30 p-4">
+                      <ChartRenderer spec={section.chart_spec} height={300} />
                     </div>
                   )}
                 </div>

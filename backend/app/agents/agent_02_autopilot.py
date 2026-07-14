@@ -362,7 +362,7 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
                 history = [{"role": "user", "content": step_prompt}]
                 
                 step_completed_json = None
-                latest_chart_base64 = None
+                latest_chart_spec = None
                 
                 for attempt in range(15): # Max 15 iterations per step
                     # Wait slightly so we don't spam
@@ -438,14 +438,6 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
                                 result_logs = []
                                 for log in execution.logs.stdout:
                                     result_logs.append(log)
-                                
-                                # Capture chart if exists
-                                if execution.results:
-                                    for res in execution.results:
-                                        if res.png:
-                                            latest_chart_base64 = f"data:image/png;base64,{res.png}"
-                                            result_logs.append("[CHART GENERATED SUCCESSFULLY]")
-                                            
                                 result_str = "\\n".join(result_logs)
                                 if not result_str:
                                     result_str = "Code executed successfully, but produced no stdout."
@@ -474,9 +466,9 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
                             if not isinstance(step_completed_json, dict):
                                 raise ValueError("Parsed JSON is not an object")
                                 
-                            # Attach chart if LLM signaled it and we captured one
-                            if step_completed_json.get("has_chart") and latest_chart_base64:
-                                step_completed_json["chart_base64"] = latest_chart_base64
+                            # Attach chart_spec if the LLM included one
+                            if step_completed_json.get("has_chart") and step_completed_json.get("chart_spec"):
+                                latest_chart_spec = step_completed_json["chart_spec"]
                             
                             break # Successfully parsed JSON, break out of ReAct loop
                             
@@ -546,13 +538,13 @@ COMPLETED FINDINGS:
             try:
                 report_json = json.loads(extract_json(report_response))
                 
-                # Re-attach charts to report sections by matching step_ids
+                # Re-attach chart_spec to report sections by matching step_ids
                 for section in report_json.get("sections", []):
                     if section.get("has_chart"):
                         s_id = section.get("step_id")
                         for f in findings_for_report:
-                            if f.get("step_id") == s_id and f.get("chart_base64"):
-                                section["chart_base64"] = f.get("chart_base64")
+                            if f.get("step_id") == s_id and f.get("chart_spec"):
+                                section["chart_spec"] = f.get("chart_spec")
                                 break
                                 
             except:

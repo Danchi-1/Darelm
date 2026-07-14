@@ -144,21 +144,40 @@ Always write pandas code that:
 - Returns results via print() so they appear in stdout
 - Uses try/except around the main computation block
 
+CRITICAL VISUAL/MATPLOTLIB RULES:
+If generating a chart, you MUST apply this EXACT styling to ensure it matches the SaaS UI:
+1. You MUST use `plt.style.use('dark_background')` immediately after importing matplotlib.
+2. You MUST set backgrounds to transparent: `fig.patch.set_alpha(0)` and `ax.patch.set_alpha(0)`.
+3. NEVER include a chart title (`plt.title()`). The dashboard provides its own title above the chart.
+4. Remove top and right spines: `ax.spines['top'].set_visible(False)`.
+5. Use sleek, premium hex colors (e.g. `#10b981`, `#3b82f6`) instead of default seaborn/matplotlib colors.
+
 Example of acceptable code:
 ```python
 try:
     import pandas as pd
-    import numpy as np
+    import matplotlib.pyplot as plt
     
-    # Check column exists
     if 'fatalities' not in df.columns:
         print("ERROR: fatalities column not found")
     else:
-        result = df.groupby('event_type')['fatalities'].agg(['mean', 'sum', 'count'])
-        result = result.round(2).sort_values('sum', ascending=False)
+        plt.style.use('dark_background')
+        result = df.groupby('event_type')['fatalities'].sum().nlargest(5)
+        fig, ax = plt.subplots(figsize=(8, 4))
+        
+        # Note: No plt.title() used!
+        result.plot(kind='bar', color='#3b82f6', ax=ax)
+        fig.patch.set_alpha(0)
+        ax.patch.set_alpha(0)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        
+        plt.xticks(rotation=45, ha='right')
+        plt.tight_layout()
+        plt.show()
         print(result.to_string())
 except Exception as e:
-    print(f"ERROR: {str(e)}")
+    print(f"Summary of error: {str(e)}")
 ```"""
 
 EXECUTOR_PROMPT_SHORT = """You are an autonomous Python execution agent powered by Qwen.
@@ -247,7 +266,7 @@ SYNTHESIS RULES:
 
 2. STRICT KPI FORMATTING. For `key_stat`, you MUST output ONLY a raw number or extreme short metric (e.g. `1,245`, `+12.4%`, `2007-2025`, `45%`). NEVER write a full sentence like "The total events were 1,245". The frontend will display this in a massive font. If no metric exists, output `N/A`.
 
-3. NARRATIVES INTERPRET, NOT DESCRIBE. Do not say "the chart shows X." Say "X suggests that Y, which means Z for the user's goal."
+3. NARRATIVES MUST BE ULTRA-SHORT. For `narrative`, you MUST write EXACTLY ONE concise sentence. No paragraphs. Get straight to the point.
 
 4. CONCLUSIONS ARE SPECIFIC. Never write vague conclusions like "There are patterns in the data." Write "Protest events account for 43% of all conflict incidents but only 2% of total fatalities, indicating a disconnect between event frequency and lethality."
 

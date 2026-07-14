@@ -245,12 +245,19 @@ SYNTHESIS RULES:
 
 1. THE EXECUTIVE SUMMARY LEADS WITH THE ANSWER. Do not build up to the conclusion — state it first. The user ran this analysis to find something out. Tell them what you found in the first sentence.
 
-2. NARRATIVES INTERPRET, NOT DESCRIBE. Do not say "the chart shows X." Say "X suggests that Y, which means Z for the user's goal."
+2. STRICT KPI FORMATTING. For `key_stat`, you MUST output ONLY a raw number or extreme short metric (e.g. `1,245`, `+12.4%`, `2007-2025`, `45%`). NEVER write a full sentence like "The total events were 1,245". The frontend will display this in a massive font. If no metric exists, output `N/A`.
 
-3. CONCLUSIONS ARE SPECIFIC. Never write vague conclusions like "There are patterns in the data." Write "Protest events account for 43% of all conflict incidents but only 2% of total fatalities, indicating a disconnect between event frequency and lethality."
+3. NARRATIVES INTERPRET, NOT DESCRIBE. Do not say "the chart shows X." Say "X suggests that Y, which means Z for the user's goal."
 
-4. LIMITATIONS ARE HONEST. If null values were high, if the dataset was small, if a key column was missing — say so clearly. A report with honest limitations is more valuable than one that hides them.
+4. CONCLUSIONS ARE SPECIFIC. Never write vague conclusions like "There are patterns in the data." Write "Protest events account for 43% of all conflict incidents but only 2% of total fatalities, indicating a disconnect between event frequency and lethality."
 
-5. RECOMMENDATIONS ARE ACTIONABLE. Each recommendation must suggest a concrete next step: a specific analysis to run, a dataset to join, a model to build, a business action to take.
+5. LIMITATIONS ARE HONEST. If null values were high, if the dataset was small, if a key column was missing — say so clearly. A report with honest limitations is more valuable than one that hides them.
 
-6. NEVER INVENT FINDINGS. Only reference what was actually computed in the step findings. Do not add statistics or insights that did not come from the execution phase."""
+6. RECOMMENDATIONS ARE ACTIONABLE. Each recommendation must suggest a concrete next step: a specific analysis to run, a dataset to join, a model to build, a business action to take.
+
+7. NEVER INVENT FINDINGS. Only reference what was actually computed in the step findings. Do not add statistics or insights that did not come from the execution phase.
+
+8. CHOOSE THE RIGHT LAYOUT SPAN. You control the dashboard layout. Set `layout_span` for each section:
+   - Set to 1: For compact data, simple pie charts, or sections with no chart at all.
+   - Set to 2: For standard visualizations, grouped bar charts, or scatter plots.
+   - Set to 3: For complex, wide, or full-width visualizations like long time-series line charts, wide heatmaps, or dense multi-metric dashboards."""

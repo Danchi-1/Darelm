@@ -1,211 +1,133 @@
-# Darelm
+<div align="center">
+  <img src="./frontend/public/favicon.ico" alt="Darelm Logo" width="80" height="80">
+  <h1 align="center">Darelm</h1>
+  <p align="center">
+    <strong>The Autonomous Enterprise AI Analyst</strong>
+    <br />
+    <em>Built for the Qwen Cloud Hackathon 2026</em>
+  </p>
+</div>
 
-Darelm is a Qwen-powered data intelligence platform with three autonomous agents: a Conversational Analyst, an Autopilot Analyst, and an ML Experimenter.
+<p align="center">
+  <a href="#-hackathon-track">Hackathon Track</a> •
+  <a href="#-the-problem">The Problem</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-architecture">Architecture</a> •
+  <a href="#-proof-of-alibaba-cloud">Alibaba Cloud Proof</a> •
+  <a href="#-local-setup">Local Setup</a>
+</p>
 
-## Tech Stack
+---
 
-### Frontend
-- **React 18** - UI framework
-- **Vite** - Build tool and dev server
-- **Tailwind CSS** - Utility-first styling
-- **Framer Motion** - Animations and transitions
-- **React Router** - Client-side routing
-- **Zustand** - State management
-- **Lucide React** - Icon library
+## 🏆 Hackathon Track
 
-### Backend (to be implemented)
-- **Python** - Backend language
-- **FastAPI** - API framework
-- **Qwen Cloud** - AI/ML model provider
+**Track 4: Autopilot Agent**  
+*Build an Agent that automates real-world business workflows end-to-end... Emphasis is on production-readiness over toy demos.*
 
-## Project Structure
+**Demo Video:** [INSERT YOUTUBE LINK HERE]  
 
+## 🚨 The Problem
+
+Enterprise data analysis is slow and expensive. When an executive needs insights from a raw 500MB dataset, they typically must wait days for a data scientist to clean the data, write Pandas scripts, and manually construct a BI dashboard in Tableau or PowerBI.
+
+**Darelm solves this.** Darelm is an autonomous, end-to-end AI Analyst. You simply upload a dataset and state your goal. Darelm's Autopilot Agent autonomously plans the analysis, writes and securely executes Python code, handles its own errors, and dynamically synthesizes a production-ready BI dashboard in under 3 minutes.
+
+## ✨ Features
+
+- **Autonomous Multi-Step Reasoning (ReAct):** Agent 02 doesn't just write scripts; it enters a secure execution loop. If a script throws a `TypeError` due to dirty data, Qwen reads the error, corrects its own code, and tries again (up to 15 self-correcting iterations).
+- **Persistent Stateful Sandboxes:** Powered by E2B, Darelm boots a secure micro-VM for your session. It holds massive DataFrames in memory across dozens of reasoning steps.
+- **Fluid Bento-Box Dashboards:** Darelm doesn't output plain text. It natively translates the AI's JSON findings into a responsive, premium "SaaS-style" CSS Grid dashboard with fluid KPI cards and edge-to-edge charts.
+- **Enterprise Memory & Storage:** Datasets are securely stored in Alibaba Cloud OSS, and all sessions/dashboards are permanently saved in a PostgreSQL database for historical retrieval.
+
+## 🏗 Architecture
+
+Darelm uses a multi-layered, production-grade architecture combining Alibaba Cloud infrastructure with modern web frameworks.
+
+```mermaid
+graph TD
+    %% Define Styles
+    classDef client fill:#1f2937,stroke:#3b82f6,stroke-width:2px,color:#fff
+    classDef frontend fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#fff
+    classDef backend fill:#1e1b4b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    classDef ai fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#fff
+    classDef data fill:#451a03,stroke:#f59e0b,stroke-width:2px,color:#fff
+    
+    %% Nodes
+    User([Enterprise User]):::client
+    UI[React / Tailwind Frontend]:::frontend
+    Vercel[Vercel Edge Proxy]:::frontend
+    
+    FastAPI[FastAPI Backend Server\nAlibaba Cloud ECS]:::backend
+    
+    Qwen[Qwen Cloud API\nqwen-plus / qwen-max]:::ai
+    E2B[E2B Secure Micro-VM\nStateful Code Execution]:::ai
+    
+    OSS[(Alibaba Cloud OSS\nDataset Storage)]:::data
+    DB[(PostgreSQL\nSession Memory)]:::data
+    
+    %% Connections
+    User -- Prompts & File Upload --> UI
+    UI -- HTTPS Requests\nSSE Streaming --> Vercel
+    Vercel -- Reverse Proxy --> FastAPI
+    
+    FastAPI -- Uploads/Downloads --> OSS
+    FastAPI -- Reads/Writes --> DB
+    
+    FastAPI -- "Plans & Reasons" --> Qwen
+    Qwen -- "Generates Code" --> FastAPI
+    FastAPI -- "Executes Code" --> E2B
+    E2B -- "Returns Results/Errors" --> FastAPI
+    FastAPI -- "Feeds Back to ReAct Loop" --> Qwen
 ```
-darelm/
-├── frontend/
-│   ├── public/              # Static assets
-│   ├── src/
-│   │   ├── assets/          # Images, fonts, etc.
-│   │   ├── components/
-│   │   │   ├── ui/          # Reusable UI components (Button, Badge, Toast, Modal, Table)
-│   │   │   ├── layout/      # Layout components (Sidebar, TopNav, Footer)
-│   │   │   └── agents/      # Agent-specific components (ConversationalChat, AutopilotFlow, MLExperimenter)
-│   │   ├── pages/           # Page components (Landing, Login, Register, Dashboard, Session, Datasets)
-│   │   ├── hooks/           # Custom React hooks (useSession, useDataset, useAgent)
-│   │   ├── store/           # Zustand state stores (authStore)
-│   │   ├── lib/             # Utilities and API client (api, utils)
-│   │   └── styles/          # Global styles and design tokens (globals.css)
-│   ├── index.html           # HTML entry point
-│   ├── package.json         # Dependencies and scripts
-│   ├── vite.config.js       # Vite configuration
-│   ├── tailwind.config.js   # Tailwind configuration
-│   └── postcss.config.js    # PostCSS configuration
-│
-├── backend/                 # Backend (to be implemented)
-│   ├── app/
-│   │   ├── api/             # API routes
-│   │   ├── agents/          # Agent implementations
-│   │   ├── core/            # Core functionality (config, Qwen client, sandbox)
-│   │   ├── db/              # Database models and sessions
-│   │   └── main.py          # FastAPI entry point
-│   ├── requirements.txt     # Python dependencies
-│   └── Dockerfile           # Backend container
-│
-├── .env.example             # Environment variables template
-├── docker-compose.yml       # Docker orchestration
-└── README.md                # This file
-```
 
-## Getting Started
+## ☁️ Proof of Alibaba Cloud
+
+This project makes extensive, sophisticated use of Alibaba Cloud services, ensuring high availability and scalability:
+
+1. **Qwen API (`backend/app/core/qwen.py`):** Heavy utilization of Qwen models for reasoning, planning, and code generation.
+2. **Alibaba Cloud OSS (`backend/app/core/oss.py`):** We integrated `oss2` for secure cloud object storage. All user datasets are uploaded directly to Aliyun OSS buckets.
+3. **Alibaba Cloud ECS:** The production backend is deployed on an Alibaba Cloud ECS instance, securely proxying requests from the Vercel frontend.
+
+## 🚀 Local Setup
+
+To run Darelm locally for judging:
 
 ### Prerequisites
-- Node.js 18+ and npm
-- Python 3.10+ (for backend)
-- Git
+- Docker and Docker Compose
+- Node.js (for frontend development)
 
-### Frontend Setup
+### Environment Variables
+Create a `.env` file in the `backend/` directory:
+```env
+# Alibaba Cloud Configurations
+QWEN_API_KEY=your_qwen_api_key
+ALIYUN_ACCESS_KEY_ID=your_access_key
+ALIYUN_ACCESS_KEY_SECRET=your_secret_key
+ALIYUN_OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
+ALIYUN_OSS_BUCKET_NAME=your_bucket_name
 
-1. Navigate to the frontend directory:
-```bash
-cd frontend
+# E2B Sandbox
+E2B_API_KEY=your_e2b_api_key
+
+# Database
+DATABASE_URL=postgresql://postgres:postgres@db:5432/darelm
 ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+### Running the Stack
+1. **Start the Backend Infrastructure:**
+   ```bash
+   cd backend
+   docker-compose up -d --build
+   ```
+   *This boots PostgreSQL, runs Alembic migrations, and starts the FastAPI server on port 8000.*
 
-3. Start the development server:
-```bash
-npm run dev
-```
+2. **Start the Frontend:**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   *The frontend will be available at `http://localhost:5173`.*
 
-The frontend will be available at `http://localhost:3000`.
-
-### Build for Production
-
-```bash
-npm run build
-```
-
-The built files will be in the `frontend/dist` directory.
-
-## Design System
-
-### Color Tokens
-- `--void`: `#0A0A0F` - Page background
-- `--surface`: `#111118` - Cards, panels, sidebars
-- `--surface-raised`: `#16161F` - Elevated cards, modals
-- `--border`: `#1E1E2E` - All borders, dividers
-- `--ink`: `#E8E8F0` - Primary text
-- `--muted`: `#6B6B80` - Secondary text, labels, placeholders
-- `--signal`: `#00E5A0` - Single accent — CTAs, active states, highlights
-- `--signal-dim`: `rgba(0, 229, 160, 0.08)` - Accent background tint
-- `--error`: `#FF4D6D` - Errors only
-- `--warn`: `#FFB347` - Warnings only
-
-### Typography
-- **Display**: DM Mono 600 - Hero headlines, agent names, section titles
-- **Body**: Inter 400/500 - All prose, descriptions, UI copy
-- **Data**: DM Mono 400 - All numbers, metrics, file names, code, timestamps
-- **Label**: Inter 500 - Button text, form labels, nav items
-
-### Spacing
-- Base unit: 4px
-- Content max-width: 1200px
-- Page padding: 24px mobile / 48px desktop
-- Card padding: 24px
-- Section gap: 96px
-- Component gap: 16px / 24px
-
-### Border Radius
-- Cards: 8px
-- Buttons: 6px
-- Inputs: 6px
-- Badges: 4px
-
-## Pages
-
-### Landing Page (`/`)
-- Hero section with coordinate grid background
-- Agent cards with scan line hover effect
-- How it works section
-- Qwen Cloud branding section
-
-### Auth Pages (`/login`, `/register`)
-- Split-screen layout with coordinate grid
-- Form validation
-- Navigation between login and register
-
-### Dashboard (`/dashboard`)
-- Sidebar navigation
-- Agent selector cards
-- Recent sessions list
-- Time-based greeting
-
-### Session Page (`/session/:id`)
-- Conversational Analyst: Chat interface with data context panel
-- Autopilot Analyst: Goal input → Planning → Execution → Report flow
-- ML Experimenter: Hypothesis → Preprocessing → Model selection → Training → Results
-
-### Datasets Page (`/datasets`)
-- Upload zone with drag-and-drop
-- Database connection modal
-- Dataset table with actions
-
-## Components
-
-### UI Components
-- **Button**: Primary, Ghost, Danger variants with hover animations
-- **Badge**: Active and neutral variants for status indicators
-- **Toast**: Success, error, info notifications with slide-in animation
-- **Modal**: Backdrop with slide-up animation
-- **Table**: Data table with hover states and numeric alignment
-
-### Layout Components
-- **Sidebar**: Fixed navigation with user avatar and Qwen branding
-- **TopNav**: Landing page navigation with links
-- **Footer**: Minimal footer with links
-
-### Agent Components
-- **ConversationalChat**: Chat interface with typing indicator and data context
-- **AutopilotFlow**: Multi-phase workflow with step-by-step execution
-- **MLExperimenter**: ML experiment workflow with model training visualization
-
-## Features
-
-- **Coordinate Grid Background**: Signature hero element with parallax scroll effect
-- **Scan Line Animation**: One-time sweep on agent card hover
-- **Page Load Animations**: Staggered fade-in with translate effect
-- **Typing Indicator**: Pulsing dots for agent responses
-- **Progress Animations**: Smooth progress bars for training and execution
-- **Responsive Design**: Mobile breakpoint at 768px with collapsed sidebar
-
-## Qwen Cloud Integration
-
-The platform prominently features Qwen Cloud branding:
-- "POWERED BY QWEN CLOUD" eyebrow on landing hero
-- Sidebar footer branding
-- Qwen capability pills on landing page
-- No Qwen mentions on agent cards (clean design)
-
-## Architecture Notes
-
-### Massive Dataset Handling
-Darelm is designed to handle Enterprise-scale data without overwhelming the FastAPI backend:
-1. **Local Files (< 150MB)**: The backend natively compresses CSV/Excel files using `gzip` before uploading to the E2B Sandbox via HTTP, and injects a script to instantly unzip the data in the container. This bypasses the E2B 50MB payload timeout.
-2. **Massive Files (1GB+)**: The backend will generate a Pre-Signed URL (via Alibaba Cloud OSS `oss2`) and pass the URL to the E2B sandbox. The sandbox will run a Python script to download the file directly from OSS at gigabit speeds, completely bypassing the FastAPI backend memory.
-3. **Live Databases**: The backend securely passes the Database Connection String (URI) to the E2B Sandbox. The AI uses `sqlalchemy` to execute optimized SQL queries (Push-Down Compute) directly on the database cluster, returning only lightweight results to the Sandbox RAM. For complex ML/Python algorithms, the AI will pull a statistically significant random sample (e.g., `ORDER BY RANDOM() LIMIT 100000` or `TABLESAMPLE BERNOULLI`).
-
-## Development Notes
-
-- The frontend is fully functional with mock data
-- API integration is stubbed and ready for backend implementation
-- All animations respect `prefers-reduced-motion`
-- Design follows the "no AI smell" principle — clean, engineering-focused aesthetic
-- No gradients, orbs, or floating shapes
-- Single accent color (`--signal`) used strategically
-
-## License
-
-MIT
+---
+*Built with ❤️ for the Qwen Cloud Hackathon 2026*

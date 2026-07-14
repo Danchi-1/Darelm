@@ -41,52 +41,52 @@ export default function DashboardView({ reportData }) {
             <div key={idx} className={`bg-surface border border-border rounded-card flex flex-col overflow-hidden hover:border-signal transition-all duration-300 group ${spanClass}`}>
               
               {/* Card Header */}
-              <div className="p-5 border-b border-border/50 flex flex-col justify-between items-start bg-gradient-to-br from-surface-raised/20 to-transparent">
-                <h3 className="font-mono text-ink text-sm uppercase tracking-wide mb-2 line-clamp-2">{section.heading}</h3>
-                {section.key_stat && section.key_stat !== 'N/A' && section.chart_base64 && (
-                  <div className="inline-flex items-center px-2.5 py-1 rounded-md bg-signal/10 border border-signal/20">
-                    <span className="text-xl font-mono text-signal font-medium">{section.key_stat}</span>
-                  </div>
-                )}
+              <div className="p-5 border-b border-border/50 flex flex-col justify-between items-start bg-surface-raised/10">
+                <div className="flex justify-between items-start w-full">
+                  <h3 className="font-sans text-ink text-[13px] font-semibold uppercase tracking-wider mb-1 line-clamp-2 pr-4">{section.heading}</h3>
+                  {section.key_stat && section.key_stat !== 'N/A' && section.chart_base64 && (
+                    <span className="text-2xl font-mono text-signal font-bold leading-none tracking-tight">{section.key_stat}</span>
+                  )}
+                </div>
               </div>
               
               {/* Card Body */}
               {section.chart_base64 ? (
                 <div 
-                  className="flex-1 bg-void/80 p-4 flex items-center justify-center cursor-pointer relative border-b border-border/50 min-h-[250px]"
+                  className="flex-1 bg-void/10 p-0 flex items-center justify-center cursor-pointer relative border-b border-border/50 min-h-[250px]"
                   onClick={() => setFullScreenImage(section.chart_base64)}
                 >
                   <img 
                     src={section.chart_base64} 
                     alt={section.heading} 
-                    className={`w-full h-auto object-contain transition-transform duration-300 group-hover:scale-[1.02] ${span === 3 ? 'max-h-[450px]' : 'max-h-[300px]'}`} 
+                    className={`w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.01] ${span === 3 ? 'max-h-[450px]' : 'max-h-[300px]'}`} 
                   />
                   <div className="absolute inset-0 bg-void/0 group-hover:bg-void/20 backdrop-blur-[1px] transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <span className="bg-surface border border-signal text-signal px-4 py-2 rounded-full text-xs font-mono shadow-[0_0_15px_rgba(var(--color-signal),0.3)]">
+                    <span className="bg-surface border border-border text-ink px-4 py-2 rounded-full text-xs font-sans shadow-xl">
                       View Fullscreen
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="flex-1 p-8 flex flex-col items-center justify-center bg-void/40 border-b border-border/50 min-h-[200px] relative overflow-hidden">
+                <div className="flex-1 p-8 flex flex-col items-center justify-center bg-void/20 border-b border-border/50 min-h-[200px] relative overflow-hidden">
                   {/* Decorative background glow for KPI cards */}
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-signal/10 rounded-full blur-3xl"></div>
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-signal/5 rounded-full blur-3xl"></div>
                   
                   {bigStat ? (
                     <>
-                      <div className="text-5xl md:text-6xl font-mono text-signal mb-4 relative z-10 font-bold tracking-tighter drop-shadow-[0_0_10px_rgba(var(--color-signal),0.4)]">
+                      <div className="text-6xl md:text-7xl font-mono text-signal mb-2 relative z-10 font-bold tracking-tighter">
                         {bigStat}
                       </div>
                       {section.key_stat.replace(bigStat, '').trim() && (
-                        <div className="text-sm font-mono text-ink mb-6 text-center relative z-10 uppercase tracking-wide opacity-80">
+                        <div className="text-[13px] font-sans text-muted mb-6 text-center relative z-10 uppercase tracking-wider font-semibold">
                           {section.key_stat.replace(bigStat, '').trim()}
                         </div>
                       )}
                     </>
                   ) : (
-                    <div className="text-4xl mb-4 opacity-50">📊</div>
+                    <div className="text-4xl mb-4 opacity-30">📊</div>
                   )}
-                  <p className="text-muted text-center text-sm font-sans max-w-sm relative z-10 leading-relaxed border-t border-border/30 pt-4">
+                  <p className="text-muted text-center text-[15px] font-sans max-w-sm relative z-10 leading-relaxed pt-2">
                     {section.narrative}
                   </p>
                 </div>
@@ -94,10 +94,10 @@ export default function DashboardView({ reportData }) {
               
               {/* Card Footer (Analyst Insights) - Only for chart cards since text cards already display it */}
               {section.chart_base64 && (
-                <div className="p-4 bg-surface-raised/30">
+                <div className="p-4 bg-surface-raised/20">
                   <div className="flex items-start gap-3">
-                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-signal shadow-[0_0_5px_rgba(var(--color-signal),0.8)] flex-shrink-0"></div>
-                    <p className="text-sm text-muted leading-relaxed">
+                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-signal shadow-[0_0_8px_rgba(var(--color-signal),0.6)] flex-shrink-0"></div>
+                    <p className="text-[14px] text-muted font-sans leading-relaxed">
                       {section.narrative}
                     </p>
                   </div>

@@ -106,7 +106,7 @@ CORE RULES:
 
 5. HANDLE ERRORS IMMEDIATELY AND GRACEFULLY. If a tool call fails, diagnose and fix it in the next tool call. Retry with a different approach. CRITICAL: NEVER output raw Python error traces or exception messages in your final JSON output. If you absolutely cannot fix the code after multiple retries, summarize what you attempted in plain English.
 
-6. GENERATE A CHART WHEN THE STEP CALLS FOR IT. If expected_output is "chart", use matplotlib or seaborn and call `plt.show()`. The sandbox will automatically intercept the chart. You MUST ensure your plotting code handles data types correctly so it doesn't crash.
+6. GENERATE A CHART SPEC WHEN THE STEP CALLS FOR IT. If expected_output is "chart", compute the data using Python (pandas/numpy ONLY). Then in your final JSON response, include a "chart_spec" object. NEVER import matplotlib. NEVER call plt.show(). The frontend will render the chart from the spec automatically.
 
 7. PRODUCE A FINDINGS SUMMARY AT THE END. After completing the step, produce a concise findings object — this gets passed to subsequent steps and the final report synthesizer.
 
@@ -134,9 +134,33 @@ Start your response with { and end with }:
   "findings": {
     "key": "value pairs of computed results that subsequent steps may need"
   },
-  "has_chart": true/false,
-  "chart_insight": "One sentence stating what this chart shows (only if has_chart is true)"
+  "has_chart": true,
+  "chart_insight": "One sentence stating the single most important takeaway from this chart",
+  "chart_spec": {
+    "type": "bar",
+    "orientation": "horizontal",
+    "color_scheme": "single",
+    "highlight": "The single most important label name to visually emphasize (e.g. 'Nigeria')",
+    "show_legend": false,
+    "stack": false,
+    "x_label": "Axis label for x",
+    "y_label": "Axis label for y",
+    "labels": ["Label A", "Label B", "Label C"],
+    "datasets": [
+      { "label": "Series name", "data": [100, 200, 300] }
+    ]
+  }
 }
+
+CHART SPEC RULES:
+- `type`: Use "bar" for rankings/comparisons, "line" for time-series, "area" for cumulative trends, "pie" for proportions (max 6 categories).
+- `orientation`: Use "horizontal" for category rankings (easier to read long labels), "vertical" for time-based x-axes.
+- `color_scheme`: Use "single" when there is one metric, "multi" when comparing multiple series, "warm" for negative/risk metrics, "cool" for positive/growth metrics.
+- `highlight`: Set to the label string of the single most important data point. The frontend will render it bright; all others dim.
+- `show_legend`: Set to false when there is only one dataset. True only when there are multiple series.
+- `labels`: The category names (for bar/pie) or time values (for line/area) as an ordered string array.
+- `datasets`: One object per data series. Each object has a "label" string and a "data" array of numbers, in the same order as "labels".
+- If has_chart is false, omit the chart_spec field entirely.
 
 ---
 
@@ -148,40 +172,35 @@ Always write pandas code that:
 - Returns results via print() so they appear in stdout
 - Uses try/except around the main computation block
 
-CRITICAL VISUAL/MATPLOTLIB RULES:
-If generating a chart, you MUST apply this EXACT styling to ensure it matches the SaaS UI:
-1. You MUST use `plt.style.use('dark_background')` immediately after importing matplotlib.
-2. You MUST set backgrounds to transparent: `fig.patch.set_alpha(0)` and `ax.patch.set_alpha(0)`.
-3. NEVER include a chart title (`plt.title()`). The dashboard provides its own title above the chart.
-4. Remove top and right spines: `ax.spines['top'].set_visible(False)`.
-5. Use sleek, premium hex colors (e.g. `#10b981`, `#3b82f6`) instead of default seaborn/matplotlib colors.
-
-Example of acceptable code:
+CODE EXAMPLE (chart step):
 ```python
 try:
     import pandas as pd
-    import matplotlib.pyplot as plt
-    
-    if 'fatalities' not in df.columns:
-        print("ERROR: fatalities column not found")
-    else:
-        plt.style.use('dark_background')
-        result = df.groupby('event_type')['fatalities'].sum().nlargest(5)
-        fig, ax = plt.subplots(figsize=(8, 4))
-        
-        # Note: No plt.title() used!
-        result.plot(kind='bar', color='#3b82f6', ax=ax)
-        fig.patch.set_alpha(0)
-        ax.patch.set_alpha(0)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        
-        plt.xticks(rotation=45, ha='right')
-        plt.tight_layout()
-        plt.show()
-        print(result.to_string())
+    result = df.groupby('country')['fatalities'].sum().nlargest(10).reset_index()
+    result.columns = ['country', 'fatalities']
+    print(result.to_string())  # Print for verification
+    # Now package into chart_spec in the final JSON response
 except Exception as e:
-    print(f"Summary of error: {str(e)}")
+    print(f"ERROR: {str(e)}")
+```
+
+The final JSON for a chart step looks like:
+```json
+{
+  "step_id": 2, "title": "Top Countries", "status": "completed",
+  "summary": "Nigeria leads with 68,420 fatalities.",
+  "findings": {"top_country": "Nigeria", "top_fatalities": 68420},
+  "has_chart": true,
+  "chart_insight": "Nigeria accounts for 60% of regional fatalities, far exceeding all other nations.",
+  "chart_spec": {
+    "type": "bar", "orientation": "horizontal",
+    "color_scheme": "single", "highlight": "Nigeria",
+    "show_legend": false, "stack": false,
+    "x_label": "Total Fatalities", "y_label": "Country",
+    "labels": ["Nigeria", "Sudan", "Ethiopia", "Mali", "Burkina Faso"],
+    "datasets": [{"label": "Total Fatalities", "data": [68420, 34100, 21900, 18300, 15600]}]
+  }
+}
 ```"""
 
 EXECUTOR_PROMPT_SHORT = """You are an autonomous Python execution agent powered by Qwen.
@@ -197,7 +216,7 @@ INPUT YOU RECEIVE:
 RULES:
 1. ONLY write self-contained Python code. Import pandas/numpy inside every tool call.
 2. DO NOT reload data. `df` is already in memory.
-3. If expected_output is "chart", use matplotlib/seaborn and `plt.show()`.
+3. If expected_output is "chart", compute data with pandas/numpy only. NEVER use matplotlib. Build a chart_spec JSON object in your final response.
 4. CRITICAL: NEVER output raw Python error traces or exceptions as the final step output.
 5. Your FINAL response (when you stop calling tools) MUST BE VALID JSON:
 {
@@ -241,9 +260,11 @@ Start your response with { and end with }.
     {
       "step_id": 1,
       "heading": "Section heading",
-      "narrative": "2-4 sentences interpreting this step's findings in plain language. What does it mean? Why does it matter for the goal?",
-      "has_chart": true/false (must match the step findings),
-      "key_stat": "The single most important number from this step (e.g. '34.2% churn rate in the Enterprise tier'). CRITICAL: NEVER output an error message or code exception here. If no valid number exists or the step failed, output 'N/A' or a fallback statistic."
+      "narrative": "EXACTLY ONE concise sentence interpreting what this finding means for the goal.",
+      "has_chart": true,
+      "key_stat": "The single most important number (e.g. '68,420', '+26.9%'). Raw number only. NEVER a full sentence. Output 'N/A' if step failed.",
+      "layout_span": 2,
+      "chart_spec": { "(pass through the chart_spec from the executor findings for this step_id, if has_chart is true)" }
     }
   ],
   "conclusions": [

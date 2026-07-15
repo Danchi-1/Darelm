@@ -26,3 +26,4 @@ openpyxl
 gunicorn
 apscheduler
 fpdf2
+kaggle

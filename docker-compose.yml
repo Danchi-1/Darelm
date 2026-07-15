@@ -19,6 +19,7 @@ services:
       - ALIYUN_ACCESS_KEY_SECRET=${ALIYUN_ACCESS_KEY_SECRET:-}
       - ALIYUN_OSS_ENDPOINT=${ALIYUN_OSS_ENDPOINT:-}
       - ALIYUN_OSS_BUCKET_NAME=${ALIYUN_OSS_BUCKET_NAME:-}
+      - FERNET_KEY=${FERNET_KEY:-}
     restart: unless-stopped
     expose:
       - "8000"

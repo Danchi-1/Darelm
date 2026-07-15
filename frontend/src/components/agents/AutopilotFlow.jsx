@@ -349,21 +349,21 @@ export default function AutopilotFlow() {
               <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-8">
                 <div className="flex flex-col sm:flex-row gap-3 justify-end items-center bg-surface-raised/20 p-4 sm:p-6 rounded-card border border-border/40">
                   <Button variant="ghost" size="md" className="w-full sm:w-auto justify-center" onClick={() => setViewMode('report')}>
-                    📄 View as Report
+                    View as Report
                   </Button>
                   <Button variant="outline" size="md" className="w-full sm:w-auto justify-center" onClick={() => {
                     const url = `${window.location.origin}/shared/dashboard/${sessionId}`;
                     navigator.clipboard.writeText(url);
                     addToast('Dashboard link copied to clipboard!', 'success');
                   }}>
-                    🔗 Share Dashboard
+                    Share Dashboard
                   </Button>
                   <Button variant="primary" size="md" className="w-full sm:w-auto justify-center" onClick={() => {
                     setPhase('goal');
                     setSessionId(null);
                     navigate('/session/new?agent=02');
                   }}>
-                    ✨ New Analysis
+                    New Analysis
                   </Button>
                 </div>
               </div>
@@ -445,7 +445,7 @@ export default function AutopilotFlow() {
                   className="w-full sm:w-auto justify-center"
                   onClick={() => setViewMode('dashboard')}
                 >
-                  📊 View Dashboard
+                  View Dashboard
                 </Button>
                 <Button
                   variant="ghost"
@@ -453,7 +453,7 @@ export default function AutopilotFlow() {
                   className="w-full sm:w-auto justify-center"
                   onClick={() => handleExport('pdf')}
                 >
-                  📄 Export PDF
+                  Export PDF
                 </Button>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
@@ -471,10 +471,10 @@ export default function AutopilotFlow() {
                     }
                   }}
                 >
-                  💬 Chat with Agent 01
+                  Chat with Agent 01
                 </Button>
                 <Button variant="primary" size="md" className="w-full sm:w-auto justify-center" onClick={() => setPhase('goal')}>
-                  ✨ New Analysis
+                  New Analysis
                 </Button>
               </div>
             </div>

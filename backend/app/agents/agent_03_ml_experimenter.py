@@ -221,7 +221,6 @@ async def execute_ml_experiment(
                 print("[EXECUTOR] Installing required packages in sandbox...")
                 await asyncio.to_thread(sandbox.commands.run, "pip install openpyxl xlrd", timeout=60)
                 
-                import json
                 safe_url = json.dumps(storage_url)
                 safe_filename = json.dumps(f"/home/user/{sandbox_filename}")
                 download_code = f"""

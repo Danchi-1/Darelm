@@ -372,7 +372,6 @@ export default function AutopilotFlow() {
         }
 
         return (
-        return (
           <div className="max-w-4xl mx-auto px-0 sm:px-4">
             {/* Clean title — no buttons interrupting the reading flow */}
             <h2 className="font-sans text-xl sm:text-3xl font-bold text-ink leading-tight mb-8 text-center sm:text-left">

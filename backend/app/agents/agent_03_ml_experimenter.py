@@ -208,12 +208,22 @@ async def execute_ml_experiment(
                 import gzip
                 
                 def write_dataset():
-                    if abs_path.endswith('.gz') and os.path.exists(abs_path):
-                        with gzip.open(abs_path, "rb") as f:
+                    target_path = abs_path
+                    is_gz = False
+                    
+                    # Background task might have compressed it and appended .gz
+                    if not os.path.exists(abs_path) and os.path.exists(f"{abs_path}.gz"):
+                        target_path = f"{abs_path}.gz"
+                        is_gz = True
+                    elif abs_path.endswith('.gz'):
+                        is_gz = True
+                        
+                    if is_gz and os.path.exists(target_path):
+                        with gzip.open(target_path, "rb") as f:
                             sandbox.files.write(f"/home/user/{sandbox_filename}", f.read())
                     else:
-                        with open(abs_path, "rb") as f:
-                            sandbox.files.write(f"/home/user/{sandbox_filename}", f)
+                        with open(target_path, "rb") as f:
+                            sandbox.files.write(f"/home/user/{sandbox_filename}", f.read())
                 await asyncio.to_thread(write_dataset)
             elif storage_url and storage_url.startswith("http"):
                 yield f"data: {json.dumps({'status': 'thought', 'content': 'Downloading dataset securely from cloud...'})}\n\n"

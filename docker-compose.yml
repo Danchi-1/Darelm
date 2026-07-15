@@ -20,6 +20,8 @@ services:
       - ALIYUN_OSS_ENDPOINT=${ALIYUN_OSS_ENDPOINT:-}
       - ALIYUN_OSS_BUCKET_NAME=${ALIYUN_OSS_BUCKET_NAME:-}
       - FERNET_KEY=${FERNET_KEY:-}
+    volumes:
+      - ./backend/uploads:/app/uploads
     restart: unless-stopped
     expose:
       - "8000"

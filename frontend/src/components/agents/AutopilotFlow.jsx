@@ -343,27 +343,30 @@ export default function AutopilotFlow() {
         
         if (viewMode === 'dashboard') {
           return (
-            <div className="relative">
-              <div className="flex justify-end gap-2 mb-6 max-w-7xl mx-auto px-6">
-                <Button variant="ghost" size="sm" onClick={() => setViewMode('report')}>
-                  View as Report
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => {
-                  const url = `${window.location.origin}/shared/dashboard/${sessionId}`;
-                  navigator.clipboard.writeText(url);
-                  addToast('Dashboard link copied to clipboard!', 'success');
-                }}>
-                  Share Dashboard
-                </Button>
-                <Button variant="primary" size="sm" onClick={() => {
-                  setPhase('goal');
-                  setSessionId(null);
-                  navigate('/session/new?agent=02');
-                }}>
-                  New Analysis
-                </Button>
-              </div>
+            <div className="relative pb-8">
               <DashboardView reportData={reportData} />
+              
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-8">
+                <div className="flex flex-col sm:flex-row gap-3 justify-end items-center bg-surface-raised/20 p-4 sm:p-6 rounded-card border border-border/40">
+                  <Button variant="ghost" size="md" className="w-full sm:w-auto justify-center" onClick={() => setViewMode('report')}>
+                    📄 View as Report
+                  </Button>
+                  <Button variant="outline" size="md" className="w-full sm:w-auto justify-center" onClick={() => {
+                    const url = `${window.location.origin}/shared/dashboard/${sessionId}`;
+                    navigator.clipboard.writeText(url);
+                    addToast('Dashboard link copied to clipboard!', 'success');
+                  }}>
+                    🔗 Share Dashboard
+                  </Button>
+                  <Button variant="primary" size="md" className="w-full sm:w-auto justify-center" onClick={() => {
+                    setPhase('goal');
+                    setSessionId(null);
+                    navigate('/session/new?agent=02');
+                  }}>
+                    ✨ New Analysis
+                  </Button>
+                </div>
+              </div>
             </div>
           );
         }

@@ -369,32 +369,33 @@ export default function AutopilotFlow() {
         }
 
         return (
-          <div className="max-w-4xl mx-auto px-4">
+        return (
+          <div className="max-w-4xl mx-auto px-0 sm:px-4">
             {/* Clean title — no buttons interrupting the reading flow */}
-            <h2 className="font-sans text-lg sm:text-2xl font-bold text-ink leading-snug mb-6">
+            <h2 className="font-sans text-xl sm:text-3xl font-bold text-ink leading-tight mb-8 text-center sm:text-left">
               {reportData.title || 'Analysis Report'}
             </h2>
 
             <div className="space-y-6">
-              <div className="bg-surface border border-border rounded-card p-6">
-                <h3 className="font-mono text-lg text-ink mb-4">Executive Summary</h3>
-                <p className="text-muted leading-relaxed">
+              <div className="bg-surface border border-border rounded-card p-4 sm:p-6 shadow-sm">
+                <h3 className="font-mono text-base sm:text-lg text-ink mb-4 uppercase tracking-widest text-signal">Executive Summary</h3>
+                <p className="text-muted leading-relaxed text-sm sm:text-base">
                   {reportData.executive_summary}
                 </p>
               </div>
 
               {Array.isArray(reportData.sections) && reportData.sections.map((section, idx) => (
-                <div key={idx} className="bg-surface border border-border rounded-card p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-mono text-lg text-ink">{section.heading}</h3>
-                    {section.key_stat && (
-                      <div className="bg-surface-raised px-3 py-1 rounded-full border border-border">
-                        <span className="font-mono text-signal text-sm">{section.key_stat}</span>
+                <div key={idx} className="bg-surface border border-border rounded-card p-4 sm:p-6 shadow-sm">
+                  <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-3">
+                    <h3 className="font-sans font-semibold text-lg sm:text-xl text-ink leading-tight">{section.heading}</h3>
+                    {section.key_stat && section.key_stat !== 'N/A' && (
+                      <div className="bg-signal/10 px-3 py-1.5 rounded-full border border-signal/20 shrink-0">
+                        <span className="font-sans font-bold text-signal text-sm sm:text-base">{section.key_stat}</span>
                       </div>
                     )}
                   </div>
                   
-                  <p className="text-muted mb-6 leading-relaxed">{section.narrative}</p>
+                  <p className="text-muted mb-6 leading-relaxed text-sm sm:text-base">{section.narrative}</p>
                   
                   {section.has_chart && section.chart_spec && (
                     <div className="mt-4 rounded-card overflow-hidden border border-border bg-surface-raised/30 p-4">
@@ -420,11 +421,11 @@ export default function AutopilotFlow() {
                 
                 {Array.isArray(reportData.recommendations) && reportData.recommendations.length > 0 && (
                   <div className="bg-surface border border-border rounded-card p-6">
-                    <h3 className="font-mono text-lg text-ink mb-4">Recommendations</h3>
-                    <ul className="space-y-2">
+                    <h3 className="font-mono text-base sm:text-lg text-ink mb-4">Recommendations</h3>
+                    <ul className="space-y-3">
                       {reportData.recommendations.map((rec, idx) => (
-                        <li key={idx} className="flex gap-2 text-sm text-muted">
-                          <span className="text-signal">→</span> {rec}
+                        <li key={idx} className="flex gap-3 text-sm sm:text-base text-muted">
+                          <span className="text-signal mt-1">→</span> {rec}
                         </li>
                       ))}
                     </ul>
@@ -433,42 +434,45 @@ export default function AutopilotFlow() {
               </div>
             </div>
 
-            {/* Bottom action row — all actions in one place after the user has read the report */}
-            <div className="mt-8 border-t border-border/40 pt-6 flex flex-wrap gap-3 justify-between items-center">
-              <div className="flex flex-wrap gap-3">
+            {/* Bottom action row — stacked neatly on mobile, row on desktop */}
+            <div className="mt-12 pt-8 flex flex-col sm:flex-row gap-4 justify-between items-center bg-surface-raised/20 p-6 rounded-card border border-border/40">
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="md"
+                  className="w-full sm:w-auto justify-center"
                   onClick={() => setViewMode('dashboard')}
                 >
-                  View Dashboard
+                  📊 View Dashboard
                 </Button>
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="md"
+                  className="w-full sm:w-auto justify-center"
                   onClick={() => handleExport('pdf')}
                 >
-                  Export PDF
+                  📄 Export PDF
                 </Button>
               </div>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="md"
+                  className="w-full sm:w-auto justify-center"
                   onClick={async () => {
                     try {
                       const res = await api.handoffToAgent01(sessionId);
                       navigate(`/session/${res.session_id}?agent=01`);
                     } catch (err) {
                       console.error("Handoff failed", err);
-                      alert("Failed to handoff session to Agent 01");
+                      addToast("Failed to handoff session to Agent 01", "error");
                     }
                   }}
                 >
                   💬 Chat with Agent 01
                 </Button>
-                <Button variant="primary" size="sm" onClick={() => setPhase('goal')}>
-                  New Analysis
+                <Button variant="primary" size="md" className="w-full sm:w-auto justify-center" onClick={() => setPhase('goal')}>
+                  ✨ New Analysis
                 </Button>
               </div>
             </div>
@@ -481,7 +485,7 @@ export default function AutopilotFlow() {
   };
 
   return (
-    <div className="h-screen bg-void overflow-y-auto p-12">
+    <div className="h-screen bg-void overflow-y-auto px-4 py-8 sm:p-12">
       <AnimatePresence mode="wait">
         <motion.div
           key={phase}

@@ -369,10 +369,10 @@ export default function AutopilotFlow() {
         }
 
         return (
-          <div className="max-w-4xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="font-mono text-2xl text-ink">{reportData.title || 'Analysis Report'}</h2>
-              <div className="flex gap-2">
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="flex flex-col gap-3 mb-6">
+              <h2 className="font-sans text-lg sm:text-2xl font-bold text-ink leading-snug">{reportData.title || 'Analysis Report'}</h2>
+              <div className="flex gap-2 flex-wrap">
                 <Button variant="ghost" size="sm" onClick={() => setViewMode('dashboard')}>
                   View Dashboard
                 </Button>

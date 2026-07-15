@@ -370,17 +370,10 @@ export default function AutopilotFlow() {
 
         return (
           <div className="max-w-4xl mx-auto px-4">
-            <div className="flex flex-col gap-3 mb-6">
-              <h2 className="font-sans text-lg sm:text-2xl font-bold text-ink leading-snug">{reportData.title || 'Analysis Report'}</h2>
-              <div className="flex gap-2 flex-wrap">
-                <Button variant="ghost" size="sm" onClick={() => setViewMode('dashboard')}>
-                  View Dashboard
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => handleExport('pdf')}>
-                  Export PDF
-                </Button>
-              </div>
-            </div>
+            {/* Clean title — no buttons interrupting the reading flow */}
+            <h2 className="font-sans text-lg sm:text-2xl font-bold text-ink leading-snug mb-6">
+              {reportData.title || 'Analysis Report'}
+            </h2>
 
             <div className="space-y-6">
               <div className="bg-surface border border-border rounded-card p-6">
@@ -440,25 +433,44 @@ export default function AutopilotFlow() {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-between">
-              <Button 
-                variant="outline" 
-                size="md" 
-                onClick={async () => {
-                  try {
-                    const res = await api.handoffToAgent01(sessionId);
-                    navigate(`/session/${res.session_id}?agent=01`);
-                  } catch (err) {
-                    console.error("Handoff failed", err);
-                    alert("Failed to handoff session to Agent 01");
-                  }
-                }}
-              >
-                💬 Chat with Agent 01 about this Report
-              </Button>
-              <Button variant="primary" size="md" onClick={() => setPhase('goal')}>
-                Start new analysis
-              </Button>
+            {/* Bottom action row — all actions in one place after the user has read the report */}
+            <div className="mt-8 border-t border-border/40 pt-6 flex flex-wrap gap-3 justify-between items-center">
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setViewMode('dashboard')}
+                >
+                  View Dashboard
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleExport('pdf')}
+                >
+                  Export PDF
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      const res = await api.handoffToAgent01(sessionId);
+                      navigate(`/session/${res.session_id}?agent=01`);
+                    } catch (err) {
+                      console.error("Handoff failed", err);
+                      alert("Failed to handoff session to Agent 01");
+                    }
+                  }}
+                >
+                  💬 Chat with Agent 01
+                </Button>
+                <Button variant="primary" size="sm" onClick={() => setPhase('goal')}>
+                  New Analysis
+                </Button>
+              </div>
             </div>
           </div>
         );

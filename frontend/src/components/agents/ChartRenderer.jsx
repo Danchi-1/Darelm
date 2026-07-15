@@ -66,24 +66,24 @@ function BarChartView({ spec, height, colors }) {
       <BarChart
         data={data}
         layout={isHorizontal ? 'vertical' : 'horizontal'}
-        margin={{ top: 8, right: 16, left: isHorizontal ? 8 : 0, bottom: isHorizontal ? 0 : 24 }}
+        margin={{ top: 4, right: 8, left: isHorizontal ? 0 : 0, bottom: isHorizontal ? 16 : 20 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} horizontal={!isHorizontal} vertical={isHorizontal} />
         {isHorizontal ? (
           <>
-            <XAxis type="number" tick={AXIS_STYLE} axisLine={false} tickLine={false} label={spec.x_label ? { value: spec.x_label, position: 'insideBottom', offset: -4, fill: 'rgba(255,255,255,0.3)', fontSize: 10 } : null} />
-            <YAxis type="category" dataKey="label" tick={AXIS_STYLE} axisLine={false} tickLine={false} width={100} />
+            <XAxis type="number" tick={{ ...AXIS_STYLE, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} label={spec.x_label ? { value: spec.x_label, position: 'insideBottom', offset: -10, fill: 'rgba(255,255,255,0.3)', fontSize: 9 } : null} />
+            <YAxis type="category" dataKey="label" tick={{ ...AXIS_STYLE, fontSize: 10 }} axisLine={false} tickLine={false} width={90} />
           </>
         ) : (
           <>
-            <XAxis dataKey="label" tick={AXIS_STYLE} axisLine={false} tickLine={false} label={spec.x_label ? { value: spec.x_label, position: 'insideBottom', offset: -16, fill: 'rgba(255,255,255,0.3)', fontSize: 10 } : null} />
-            <YAxis tick={AXIS_STYLE} axisLine={false} tickLine={false} label={spec.y_label ? { value: spec.y_label, angle: -90, position: 'insideLeft', fill: 'rgba(255,255,255,0.3)', fontSize: 10 } : null} />
+            <XAxis dataKey="label" tick={{ ...AXIS_STYLE, fontSize: 10 }} axisLine={false} tickLine={false} label={spec.x_label ? { value: spec.x_label, position: 'insideBottom', offset: -12, fill: 'rgba(255,255,255,0.3)', fontSize: 9 } : null} />
+            <YAxis tick={{ ...AXIS_STYLE, fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} width={40} label={spec.y_label ? { value: spec.y_label, angle: -90, position: 'insideLeft', fill: 'rgba(255,255,255,0.3)', fontSize: 9 } : null} />
           </>
         )}
         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-        {spec.show_legend && <Legend wrapperStyle={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }} />}
+        {spec.show_legend && <Legend wrapperStyle={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }} />}
         {spec.datasets.map((ds, di) => (
-          <Bar key={di} dataKey={ds.label} radius={[3, 3, 3, 3]} maxBarSize={32}>
+          <Bar key={di} dataKey={ds.label} radius={[3, 3, 3, 3]} maxBarSize={28}>
             {data.map((entry, ei) => (
               <Cell key={ei} fill={getBarColor(entry, ds.label, spec, colors)} />
             ))}

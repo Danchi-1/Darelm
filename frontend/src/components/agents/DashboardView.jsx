@@ -10,8 +10,8 @@ export default function DashboardView({ reportData }) {
     <div className="max-w-7xl mx-auto px-6">
 
       {/* Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-sans font-bold text-ink tracking-tight">{reportData.title || 'Data Analysis Dashboard'}</h1>
+      <div className="mb-6 text-center px-2">
+        <h1 className="text-xl sm:text-3xl font-sans font-bold text-ink tracking-tight leading-snug">{reportData.title || 'Data Analysis Dashboard'}</h1>
       </div>
 
       {/* Unified Fluid Grid */}

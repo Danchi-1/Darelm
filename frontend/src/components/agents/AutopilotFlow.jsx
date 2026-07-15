@@ -7,6 +7,7 @@ import { useToastStore } from '../../store/toastStore';
 import { api } from '../../lib/api';
 import DashboardView from './DashboardView';
 import ChartRenderer from './ChartRenderer';
+import { FileText, Share2, Sparkles, LayoutDashboard, FileDown, MessageSquare } from 'lucide-react';
 
 const phases = ['goal', 'planning', 'execution', 'report'];
 
@@ -348,22 +349,22 @@ export default function AutopilotFlow() {
               
               <div className="max-w-7xl mx-auto px-4 sm:px-6 mt-8">
                 <div className="flex flex-col sm:flex-row gap-3 justify-end items-center bg-surface-raised/20 p-4 sm:p-6 rounded-card border border-border/40">
-                  <Button variant="ghost" size="md" className="w-full sm:w-auto justify-center" onClick={() => setViewMode('report')}>
-                    View as Report
+                  <Button variant="ghost" size="md" className="w-full sm:w-auto justify-center flex items-center gap-2" onClick={() => setViewMode('report')}>
+                    <FileText size={18} /> View as Report
                   </Button>
-                  <Button variant="outline" size="md" className="w-full sm:w-auto justify-center" onClick={() => {
+                  <Button variant="outline" size="md" className="w-full sm:w-auto justify-center flex items-center gap-2" onClick={() => {
                     const url = `${window.location.origin}/shared/dashboard/${sessionId}`;
                     navigator.clipboard.writeText(url);
                     addToast('Dashboard link copied to clipboard!', 'success');
                   }}>
-                    Share Dashboard
+                    <Share2 size={18} /> Share Dashboard
                   </Button>
-                  <Button variant="primary" size="md" className="w-full sm:w-auto justify-center" onClick={() => {
+                  <Button variant="primary" size="md" className="w-full sm:w-auto justify-center flex items-center gap-2" onClick={() => {
                     setPhase('goal');
                     setSessionId(null);
                     navigate('/session/new?agent=02');
                   }}>
-                    New Analysis
+                    <Sparkles size={18} /> New Analysis
                   </Button>
                 </div>
               </div>
@@ -442,25 +443,25 @@ export default function AutopilotFlow() {
                 <Button
                   variant="outline"
                   size="md"
-                  className="w-full sm:w-auto justify-center"
+                  className="w-full sm:w-auto justify-center flex items-center gap-2"
                   onClick={() => setViewMode('dashboard')}
                 >
-                  View Dashboard
+                  <LayoutDashboard size={18} /> View Dashboard
                 </Button>
                 <Button
                   variant="ghost"
                   size="md"
-                  className="w-full sm:w-auto justify-center"
+                  className="w-full sm:w-auto justify-center flex items-center gap-2"
                   onClick={() => handleExport('pdf')}
                 >
-                  Export PDF
+                  <FileDown size={18} /> Export PDF
                 </Button>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="md"
-                  className="w-full sm:w-auto justify-center"
+                  className="w-full sm:w-auto justify-center flex items-center gap-2"
                   onClick={async () => {
                     try {
                       const res = await api.handoffToAgent01(sessionId);
@@ -471,10 +472,10 @@ export default function AutopilotFlow() {
                     }
                   }}
                 >
-                  Chat with Agent 01
+                  <MessageSquare size={18} /> Chat with Agent 01
                 </Button>
-                <Button variant="primary" size="md" className="w-full sm:w-auto justify-center" onClick={() => setPhase('goal')}>
-                  New Analysis
+                <Button variant="primary" size="md" className="w-full sm:w-auto justify-center flex items-center gap-2" onClick={() => setPhase('goal')}>
+                  <Sparkles size={18} /> New Analysis
                 </Button>
               </div>
             </div>

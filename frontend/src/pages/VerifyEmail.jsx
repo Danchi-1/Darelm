@@ -23,11 +23,9 @@ export default function VerifyEmail() {
 
       try {
         await api.verifyEmail(token);
-        const user = await api.getCurrentUser();
-        login(user);
         setStatus('success');
-        setMessage('Email verified successfully');
-        setTimeout(() => navigate('/dashboard'), 2000);
+        setMessage('Email verified successfully. You can now log in.');
+        setTimeout(() => navigate('/login'), 3000);
       } catch (error) {
         setStatus('error');
         setMessage('Verification failed. The link may have expired.');

@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Darelm Backend"
     API_V1_STR: str = "/api"
     BACKEND_URL: str = "http://localhost:8000"
+    FRONTEND_URL: str = "http://localhost:5173"
     
     # SECURITY WARNING: keep the secret key used in production secret!
     SECRET_KEY: str = "super-secret-key-for-hackathon-only-change-in-prod"

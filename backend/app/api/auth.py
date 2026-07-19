@@ -51,7 +51,7 @@ async def register(user_in: UserCreate, background_tasks: BackgroundTasks, db: S
     
     # Send verification email via fastapi-mail
     verification_token = create_access_token(data={"sub": user.email})
-    verification_link = f"{settings.BACKEND_URL.rstrip('/')}{settings.API_V1_STR}/auth/verify-email?token={verification_token}"
+    verification_link = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?token={verification_token}"
     
     message = MessageSchema(
         subject="Darelm - Verify your account",

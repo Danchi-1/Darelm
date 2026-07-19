@@ -7,6 +7,8 @@ services:
     environment:
       # Inject the variables here or via a .env file on the ECS VM
       - SQLALCHEMY_DATABASE_URI=${SQLALCHEMY_DATABASE_URI:-sqlite:///./test.db}
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - SECRET_KEY=${SECRET_KEY:-super-secret-key}
       - MAIL_USERNAME=${MAIL_USERNAME:-}

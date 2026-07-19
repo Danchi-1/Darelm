@@ -4,6 +4,7 @@ from typing import Optional
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Darelm Backend"
     API_V1_STR: str = "/api"
+    BACKEND_URL: str = "http://localhost:8000"
     
     # SECURITY WARNING: keep the secret key used in production secret!
     SECRET_KEY: str = "super-secret-key-for-hackathon-only-change-in-prod"

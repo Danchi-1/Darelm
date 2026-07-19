@@ -30,12 +30,7 @@
 
 You can try the production build of Darelm right now. It is fully deployed on Vercel and Alibaba Cloud ECS.
 
-**Live URL:** [INSERT YOUR VERCEL LINK HERE]
-
-**Judge Testing Credentials:**
-To skip email verification and jump straight into testing, you can use our pre-verified test account:
-* **Email:** `judge@darelm.com`
-* **Password:** `DarelmTest2026!`
+**Live URL:** [darelm.vercel.app](https://darelm.vercel.app)
 
 *(Note: You can also safely use the 1-click Google Sign-in if preferred. No API keys are required to test the AI, as all Qwen reasoning and E2B sandboxes are handled server-side.)*
 

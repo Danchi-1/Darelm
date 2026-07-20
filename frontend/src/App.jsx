@@ -11,6 +11,7 @@ import Settings from './pages/Settings';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import SharedDashboard from './pages/SharedDashboard';
+import DataCleaner from './pages/DataCleaner';
 import ToastContainer from './components/ui/ToastContainer';
 import { useAuthStore } from './store/authStore';
 
@@ -87,6 +88,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Datasets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/datasets/:id/clean"
+          element={
+            <ProtectedRoute>
+              <DataCleaner />
             </ProtectedRoute>
           }
         />

@@ -266,6 +266,11 @@ export default function Datasets() {
         <Button variant="ghost" size="sm" onClick={() => handleViewDataset(dataset)}>
           View
         </Button>
+        <Link to={`/datasets/${dataset.id}/clean`}>
+          <Button variant="outline" size="sm" className="text-signal border-signal hover:bg-signal-dim">
+            ✨ Clean Data
+          </Button>
+        </Link>
         <Button variant="danger" size="sm" onClick={(e) => handleDeleteDataset(dataset.id, e)}>
           Delete
         </Button>

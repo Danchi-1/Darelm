@@ -7,6 +7,7 @@ from app.api.datasets import router as datasets_router
 from app.agents.agent_01_conversational import router as agent_01_router
 from app.agents.agent_02_autopilot import router as agent_02_router
 from app.agents.agent_03_ml_experimenter import router as agent_03_router
+from app.agents.agent_04_data_cleaner import router as agent_04_router
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -48,6 +49,7 @@ app.include_router(shared_router, prefix=f"{settings.API_V1_STR}/shared", tags=[
 app.include_router(agent_01_router, prefix=f"{settings.API_V1_STR}/agents/01", tags=["agent-01"])
 app.include_router(agent_02_router, prefix=f"{settings.API_V1_STR}/agents/02", tags=["agent-02"])
 app.include_router(agent_03_router, prefix=f"{settings.API_V1_STR}/agents/03", tags=["agent-03"])
+app.include_router(agent_04_router, prefix=f"{settings.API_V1_STR}/agents/04", tags=["agent-04"])
 
 @app.get("/")
 def root():

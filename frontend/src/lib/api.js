@@ -134,6 +134,20 @@ export const api = {
     method: 'GET',
   }),
 
+  // Data Cleaner (Agent 04)
+  cleanerStartSession: (data) => apiRequest('/agents/04/start', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  getCleanerSessions: () => apiRequest('/agents/04/sessions'),
+  cleanerGetSession: (sessionId) => apiRequest(`/agents/04/session/${sessionId}`, {
+    method: 'GET',
+  }),
+  cleanerExecuteSession: (sessionId) => apiRequest('/agents/04/execute', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId }),
+  }),
+
   // Settings
   getUserSettings: () => apiRequest('/users/settings'),
   updateUserSettings: (data) => apiRequest('/users/settings', {

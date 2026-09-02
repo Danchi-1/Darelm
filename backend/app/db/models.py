@@ -19,6 +19,7 @@ class User(Base):
     chat_sessions = relationship("ChatSession", back_populates="user", cascade="all, delete-orphan")
     autopilot_sessions = relationship("AutopilotSession", back_populates="user", cascade="all, delete-orphan")
     ml_sessions = relationship("MLExperimentSession", back_populates="user", cascade="all, delete-orphan")
+    cleaning_sessions = relationship("DataCleaningSession", back_populates="user", cascade="all, delete-orphan")
 
 
 class Dataset(Base):
@@ -38,6 +39,7 @@ class Dataset(Base):
     chat_sessions = relationship("ChatSession", back_populates="dataset")
     autopilot_sessions = relationship("AutopilotSession", back_populates="dataset")
     ml_sessions = relationship("MLExperimentSession", back_populates="dataset")
+    cleaning_sessions = relationship("DataCleaningSession", foreign_keys="DataCleaningSession.dataset_id", back_populates="dataset")
 
     @property
     def connection_string(self):
@@ -134,3 +136,20 @@ class MLExperimentSession(Base):
 
     user = relationship("User", back_populates="ml_sessions")
     dataset = relationship("Dataset", back_populates="ml_sessions")
+
+class DataCleaningSession(Base):
+    __tablename__ = "data_cleaning_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True)
+    cleaned_dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True)
+    instructions = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="executing") # executing, completed, failed
+    report_json = Column(String, nullable=True) # Contains before/after preview and summary
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="cleaning_sessions")
+    dataset = relationship("Dataset", foreign_keys=[dataset_id], back_populates="cleaning_sessions")
+    cleaned_dataset = relationship("Dataset", foreign_keys=[cleaned_dataset_id])

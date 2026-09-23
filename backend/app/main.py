@@ -13,13 +13,17 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.core.rate_limit import limiter
 
+import asyncio
 from contextlib import asynccontextmanager
 from app.core.cleanup import start_scheduler
+from app.core.keep_alive import start_keep_alive
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler = start_scheduler()
+    keep_alive_task = asyncio.create_task(start_keep_alive())
     yield
+    keep_alive_task.cancel()
     scheduler.shutdown()
 
 app = FastAPI(
@@ -54,3 +58,7 @@ app.include_router(agent_04_router, prefix=f"{settings.API_V1_STR}/agents/04", t
 @app.get("/")
 def root():
     return {"message": "Welcome to Darelm API"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}

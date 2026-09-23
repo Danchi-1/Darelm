@@ -23,6 +23,8 @@ services:
       - ALIYUN_OSS_ENDPOINT=${ALIYUN_OSS_ENDPOINT:-}
       - ALIYUN_OSS_BUCKET_NAME=${ALIYUN_OSS_BUCKET_NAME:-}
       - FERNET_KEY=${FERNET_KEY:-}
+      - ENABLE_KEEP_ALIVE=${ENABLE_KEEP_ALIVE:-true}
+      - RENDER_EXTERNAL_URL=${RENDER_EXTERNAL_URL:-}
     volumes:
       - ./backend/uploads:/app/uploads
     restart: unless-stopped

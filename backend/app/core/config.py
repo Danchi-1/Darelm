@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     
     # Encryption
     FERNET_KEY: Optional[str] = None
+    
+    # Keep-Alive Heartbeat (Prevent Render 15-minute sleep)
+    ENABLE_KEEP_ALIVE: bool = True
+    RENDER_EXTERNAL_URL: Optional[str] = "https://darelm.onrender.com"
 
     class Config:
         case_sensitive = True

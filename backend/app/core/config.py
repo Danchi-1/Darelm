@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     QWEN_API_KEY: Optional[str] = None
     OPENROUTER_API_KEY: Optional[str] = None
     OPENROUTER_MODEL: str = "qwen/qwen3.8-27b:free"
+    OPENROUTER_FALLBACK_MODELS: list[str] = [
+        "qwen/qwen3.8-27b:free",
+        "google/gemma-4-31b-it:free",
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "google/gemma-4-26b-a4b-it:free",
+        "openrouter/free",
+    ]
     E2B_API_KEY: Optional[str] = None
     
     # Encryption

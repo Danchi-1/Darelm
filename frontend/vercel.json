@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "http://8.211.197.91/api/$1"
+      "destination": "https://darelm.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",

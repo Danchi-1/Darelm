@@ -51,6 +51,8 @@ export default function Sidebar() {
           data = await api.getAutopilotSessions();
         } else if (selectedAgent === '03') {
           data = await api.getMLSessions();
+        } else if (selectedAgent === '04') {
+          data = await api.getCleanerSessions();
         }
         setSessions(data);
       } catch (error) {
@@ -207,6 +209,7 @@ export default function Sidebar() {
               <option value="01">Agent 01 - Conversational</option>
               <option value="02">Agent 02 - Autopilot</option>
               <option value="03">Agent 03 - ML Experimenter</option>
+              <option value="04">Agent 04 - Data Cleaner</option>
             </select>
           </div>
           
@@ -241,15 +244,15 @@ export default function Sidebar() {
                           </div>
                         ) : (
                           <Link
-                            to={`/session/${session.id}?agent=${selectedAgent}`}
+                            to={selectedAgent === '04' ? (session.dataset_id ? `/datasets/${session.dataset_id}/clean` : '/cleaner') : `/session/${session.id}?agent=${selectedAgent}`}
                             className={clsx(
                               'flex items-center justify-between px-3 py-2 rounded-btn text-sm transition-colors duration-150 relative overflow-hidden group',
-                              location.pathname === `/session/${session.id}`
+                              location.pathname === `/session/${session.id}` || (selectedAgent === '04' && location.pathname.includes(session.dataset_id))
                                 ? 'bg-surface-raised text-ink'
                                 : 'text-muted hover:text-ink hover:bg-surface-raised/50'
                             )}
                           >
-                            <span className="truncate pr-6">{session.title}</span>
+                            <span className="truncate pr-6">{session.title || session.name || (session.instructions ? `Clean: ${session.instructions.slice(0, 20)}...` : 'Cleaning Session')}</span>
                             
                             {/* Action Menu Toggle */}
                             <div className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center bg-gradient-to-l from-surface-raised via-surface-raised to-transparent pl-4">

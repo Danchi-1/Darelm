@@ -18,8 +18,17 @@ from contextlib import asynccontextmanager
 from app.core.cleanup import start_scheduler
 from app.core.keep_alive import start_keep_alive
 
+from app.db.session import engine, Base
+import app.db.models
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Ensure all tables exist in database (e.g. data_cleaning_sessions)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"[DB] Table creation check: {e}")
+
     scheduler = start_scheduler()
     keep_alive_task = asyncio.create_task(start_keep_alive())
     yield

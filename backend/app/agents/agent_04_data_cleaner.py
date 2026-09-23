@@ -32,7 +32,7 @@ def extract_json(text: str) -> str:
 router = APIRouter()
 
 class CleanerStartRequest(BaseModel):
-    instructions: str
+    instructions: Optional[str] = ""
     dataset_id: str
 
 from app.core.rate_limit import limiter
@@ -57,10 +57,14 @@ async def start_cleaning_session(
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
         
+    cleaning_instructions = (payload.instructions or "").strip()
+    if not cleaning_instructions:
+        cleaning_instructions = "Automatic dataset understanding and cleaning: Inspect schema, nulls, duplicates, outliers, and data types first. Then clean and standardize."
+
     session = DataCleaningSession(
         user_id=current_user.id,
         dataset_id=dataset.id,
-        instructions=payload.instructions,
+        instructions=cleaning_instructions,
         status="pending",
     )
     db.add(session)
@@ -155,10 +159,20 @@ except Exception as e:
 """
                 await asyncio.to_thread(sandbox.run_code, download_code)
 
+            final_summary = ""
             async def execute_react_loop():
+                nonlocal final_summary
+                is_auto = not session_model.instructions or "auto" in session_model.instructions.lower()
+                user_content = (
+                    f"DATASET PATH: /home/user/{sandbox_filename}\n\n"
+                    f"SCHEMA:\n{json.dumps(dataset_context)}\n\n"
+                    f"INSTRUCTIONS:\n{session_model.instructions}\n\n"
+                    f"MANDATORY REQUIREMENT: Follow Phase 1 first! Run Python code to inspect and understand the dataset (shape, dtypes, nulls, duplicates, and distributions). "
+                    f"{'Apply comprehensive automated cleaning based on what you discovered.' if is_auto else 'Then execute the user instructions precisely.'}"
+                )
                 messages = [
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": f"DATASET PATH: /home/user/{sandbox_filename}\n\nSCHEMA:\n{json.dumps(dataset_context)}\n\nINSTRUCTIONS:\n{session_model.instructions}"}
+                    {"role": "user", "content": user_content}
                 ]
                 
                 tools = [{
@@ -188,6 +202,7 @@ except Exception as e:
                     messages.append(message.model_dump(exclude_none=True))
                     
                     if getattr(message, "content", None):
+                        final_summary = message.content
                         yield f"data: {json.dumps({'status': 'thought', 'content': message.content})}\n\n"
                     
                     if not getattr(message, "tool_calls", None):
@@ -199,6 +214,8 @@ except Exception as e:
                             args = json.loads(tool_call.function.arguments)
                             code = args.get("code", "")
                             
+                            yield f"data: {json.dumps({'status': 'thought', 'content': f'Running code in sandbox:\n```python\n{code}\n```'})}\n\n"
+                            
                             execution = await asyncio.to_thread(sandbox.run_code, code)
                             output = ""
                             if execution.logs.stdout:
@@ -208,6 +225,9 @@ except Exception as e:
                             if execution.error:
                                 output += f"\nFATAL ERROR: {execution.error.name}: {execution.error.value}"
                                 
+                            if output.strip():
+                                yield f"data: {json.dumps({'status': 'thought', 'content': f'Output:\n```\n{output[:1000]}\n```'})}\n\n"
+
                             messages.append({
                                 "role": "tool",
                                 "tool_call_id": tool_call.id,
@@ -260,7 +280,7 @@ except Exception as e:
                 
                 report = {
                     "preview": preview_json,
-                    "summary": "Data cleaning complete.",
+                    "summary": final_summary or "Data cleaning complete.",
                     "new_dataset_id": str(new_dataset.id)
                 }
                 session_model.report_json = json.dumps(report)
@@ -291,7 +311,7 @@ def get_cleaning_sessions(
     current_user: User = Depends(get_current_user)
 ):
     sessions = db.query(DataCleaningSession).filter(DataCleaningSession.user_id == current_user.id).order_by(DataCleaningSession.created_at.desc()).all()
-    return [{"id": str(s.id), "instructions": s.instructions[:50] + "...", "status": s.status, "dataset_id": str(s.dataset_id), "cleaned_dataset_id": str(s.cleaned_dataset_id), "created_at": s.created_at} for s in sessions]
+    return [{"id": str(s.id), "instructions": (s.instructions or "")[:50] + "...", "status": s.status, "dataset_id": str(s.dataset_id), "cleaned_dataset_id": str(s.cleaned_dataset_id), "created_at": s.created_at} for s in sessions]
 
 @router.get("/session/{session_id}")
 async def get_cleaning_session(

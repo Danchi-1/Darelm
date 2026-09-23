@@ -3,6 +3,7 @@ import random
 import asyncio
 import logging
 import urllib.request
+import urllib.error
 from typing import Optional
 from app.core.config import settings
 
@@ -16,8 +17,30 @@ USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0",
 ]
 
+# Varied endpoints to ping (mix of 200, 401, 404) to look like organic traffic
+PING_ENDPOINTS = [
+    "/health",
+    "/",
+    "/docs",
+    "/api/openapi.json",
+    "/api/v1/auth/me",
+    "/api/v1/datasets",
+    "/api/v1/users",
+    "/favicon.ico",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/status",
+    "/ping",
+    "/api/version",
+    "/static/logo.png",
+    "/assets/index.js",
+]
+
 def _send_ping(url: str) -> Optional[int]:
-    """Sends an HTTP GET request with realistic user headers."""
+    """
+    Sends an HTTP GET request with realistic user headers to register traffic on Render's proxy.
+    Returns HTTP status code (including 404, 401, etc.), which successfully resets Render's idle timer.
+    """
     try:
         req = urllib.request.Request(
             url,
@@ -29,8 +52,11 @@ def _send_ping(url: str) -> Optional[int]:
         )
         with urllib.request.urlopen(req, timeout=20) as resp:
             return resp.status
+    except urllib.error.HTTPError as e:
+        # HTTP errors (404, 401, 403, etc.) still hit Render's reverse proxy and prevent spindown
+        return e.code
     except Exception as e:
-        logger.warning(f"[Keep-Alive] Ping request failed: {e}")
+        logger.warning(f"[Keep-Alive] Ping network error: {e}")
         return None
 
 async def start_keep_alive():
@@ -38,8 +64,9 @@ async def start_keep_alive():
     Randomized keep-alive routine for Render web services.
     Render free tier spins down after 15 minutes of inactivity.
     This routine picks a pseudo-random interval between 1 and 14 minutes,
-    waits for it, and sends an external ping to keep the service warm and
-    prevent suspicion.
+    selects a randomized endpoint (even ones that return 404 or 401),
+    waits for the time to elapse, and sends an external ping to keep the service
+    warm and unsuspicious.
     """
     if not settings.ENABLE_KEEP_ALIVE:
         logger.info("[Keep-Alive] Disabled via settings.")
@@ -52,8 +79,7 @@ async def start_keep_alive():
         or "https://darelm.onrender.com"
     ).rstrip("/")
     
-    target_url = f"{base_url}/health"
-    logger.info(f"[Keep-Alive] Initialized. Target URL: {target_url}")
+    logger.info(f"[Keep-Alive] Initialized. Base URL: {base_url}")
 
     # Initial brief warm-up delay before the first cycle
     await asyncio.sleep(15)
@@ -64,13 +90,17 @@ async def start_keep_alive():
         random_seconds = random.randint(0, 59)
         total_delay = (random_minutes * 60) + random_seconds
 
-        logger.info(f"[Keep-Alive] Next ping scheduled in {random_minutes}m {random_seconds}s (total: {total_delay}s)")
+        # Pick a random endpoint each time (varied paths, status 200/401/404)
+        endpoint = random.choice(PING_ENDPOINTS)
+        target_url = f"{base_url}{endpoint}"
+
+        logger.info(f"[Keep-Alive] Next ping scheduled in {random_minutes}m {random_seconds}s to '{endpoint}' (total: {total_delay}s)")
 
         try:
             await asyncio.sleep(total_delay)
             status = await asyncio.to_thread(_send_ping, target_url)
-            if status:
-                logger.info(f"[Keep-Alive] Heartbeat ping successful -> HTTP {status}")
+            if status is not None:
+                logger.info(f"[Keep-Alive] Heartbeat ping to '{endpoint}' completed -> HTTP {status} (traffic registered)")
         except asyncio.CancelledError:
             logger.info("[Keep-Alive] Service shutdown, terminating heartbeat task.")
             break

@@ -26,6 +26,12 @@ const agents = [
     description: 'State a modeling question and get trained models',
     capabilities: ['Auto preprocessing', 'Model selection', 'Full evaluation'],
   },
+  {
+    number: '04',
+    name: 'Data Cleaner',
+    description: 'Audit data quality, impute nulls, and clean datasets',
+    capabilities: ['Null imputation', 'Outlier remediation', 'Clean data export'],
+  },
 ];
 
 const recentSessions = [
@@ -51,17 +57,18 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [datasetsRes, sessions01, sessions02, sessions03] = await Promise.all([
+        const [datasetsRes, sessions01, sessions02, sessions03, sessions04] = await Promise.all([
           api.getDatasets(),
           api.getSessions(),
           api.getAutopilotSessions(),
-          api.getMLSessions()
+          api.getMLSessions(),
+          api.getCleanerSessions()
         ]);
         
         setSessions(sessions01);
         setStats({
           datasets: datasetsRes.length,
-          sessions: sessions01.length + sessions02.length + sessions03.length
+          sessions: sessions01.length + sessions02.length + sessions03.length + (sessions04?.length || 0)
         });
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
@@ -98,28 +105,30 @@ export default function Dashboard() {
           <div className="bg-surface border border-border rounded-card p-6 flex flex-col justify-center items-center relative overflow-hidden group hover:border-signal transition-colors">
             <div className="absolute inset-0 bg-signal/5 opacity-0 group-hover:opacity-100 transition-opacity" />
             <span className="text-muted text-sm font-mono mb-2">Active Agents</span>
-            <span className="text-4xl text-signal font-mono">3</span>
+            <span className="text-4xl text-signal font-mono">{agents.length}</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12 w-full max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 md:mb-12 w-full max-w-6xl mx-auto">
           {agents.map((agent) => (
             <Link
               key={agent.number}
-              to={`/session/new?agent=${agent.number}`}
-              className="bg-surface border border-border rounded-card p-4 md:p-6 hover:border-signal transition-colors duration-200 group"
+              to={agent.number === '04' ? '/cleaner' : `/session/new?agent=${agent.number}`}
+              className="bg-surface border border-border rounded-card p-4 md:p-6 hover:border-signal transition-colors duration-200 group flex flex-col justify-between"
             >
-              <span className="font-mono text-muted text-xs md:text-sm">{agent.number}</span>
-              <h3 className="font-mono text-base md:text-lg text-ink mt-2 mb-2 md:mb-3">{agent.name}</h3>
-              <p className="text-xs md:text-sm text-muted mb-3 md:mb-4">{agent.description}</p>
-              <ul className="space-y-1 md:space-y-2">
-                {agent.capabilities.map((capability, i) => (
-                  <li key={i} className="text-xs md:text-sm text-ink flex items-start">
-                    <span className="text-signal mr-2">•</span>
-                    {capability}
-                  </li>
-                ))}
-              </ul>
+              <div>
+                <span className="font-mono text-muted text-xs md:text-sm">{agent.number}</span>
+                <h3 className="font-mono text-base md:text-lg text-ink mt-2 mb-2 md:mb-3">{agent.name}</h3>
+                <p className="text-xs md:text-sm text-muted mb-3 md:mb-4">{agent.description}</p>
+                <ul className="space-y-1 md:space-y-2">
+                  {agent.capabilities.map((capability, i) => (
+                    <li key={i} className="text-xs md:text-sm text-ink flex items-start">
+                      <span className="text-signal mr-2">•</span>
+                      {capability}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </Link>
           ))}
         </div>

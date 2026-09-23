@@ -11,8 +11,9 @@ class QwenClient:
                 base_url="https://openrouter.ai/api/v1",
                 api_key=settings.OPENROUTER_API_KEY
             )
-            # Switch to Nvidia Nemotron model
-            return client, "nvidia/llama-3.1-nemotron-70b-instruct:free"
+            # Use configured OpenRouter model (defaults to qwen/qwen3.8-27b:free)
+            model_name = settings.OPENROUTER_MODEL or "qwen/qwen3.8-27b:free"
+            return client, model_name
         elif settings.QWEN_API_KEY:
             client = AsyncOpenAI(
                 base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1",

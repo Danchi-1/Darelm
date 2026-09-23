@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     # AI Models
     QWEN_API_KEY: Optional[str] = None
     OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_MODEL: str = "qwen/qwen3.8-27b:free"
     E2B_API_KEY: Optional[str] = None
     
     # Encryption

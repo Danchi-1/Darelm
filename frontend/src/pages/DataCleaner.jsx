@@ -12,6 +12,7 @@ export default function DataCleaner() {
   const addToast = useToastStore((state) => state.addToast);
   
   const [dataset, setDataset] = useState(null);
+  const [datasets, setDatasets] = useState([]);
   const [instructions, setInstructions] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [logs, setLogs] = useState([]);
@@ -20,17 +21,22 @@ export default function DataCleaner() {
   const logsEndRef = useRef(null);
 
   useEffect(() => {
-    const fetchDataset = async () => {
+    const fetchDatasets = async () => {
       try {
-        const data = await api.getDataset(id);
-        setDataset(data);
+        const allDatasets = await api.getDatasets();
+        setDatasets(allDatasets);
+        if (id && id !== 'new') {
+          const data = await api.getDataset(id);
+          setDataset(data);
+        } else if (allDatasets.length > 0) {
+          setDataset(allDatasets[0]);
+        }
       } catch (error) {
         addToast('Failed to load dataset details', 'error');
-        navigate('/datasets');
       }
     };
-    fetchDataset();
-  }, [id, navigate, addToast]);
+    fetchDatasets();
+  }, [id, addToast]);
 
   useEffect(() => {
     if (logsEndRef.current) {
@@ -39,6 +45,12 @@ export default function DataCleaner() {
   }, [logs]);
 
   const handleStartCleaning = async () => {
+    const targetDatasetId = dataset?.id || id;
+    if (!targetDatasetId) {
+      addToast('Please select or upload a dataset first', 'error');
+      return;
+    }
+
     if (!instructions.trim()) {
       addToast('Please enter cleaning instructions', 'error');
       return;
@@ -50,7 +62,7 @@ export default function DataCleaner() {
 
     try {
       const { session_id } = await api.cleanerStartSession({
-        dataset_id: id,
+        dataset_id: targetDatasetId,
         instructions: instructions,
       });
 
@@ -108,11 +120,27 @@ export default function DataCleaner() {
               Data Cleaner
             </h1>
           </div>
-          {dataset && (
+          {datasets.length > 1 && (!id || id === 'new') ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted font-mono">Target Dataset:</span>
+              <select
+                value={dataset?.id || ''}
+                onChange={(e) => {
+                  const found = datasets.find(d => d.id === e.target.value);
+                  if (found) setDataset(found);
+                }}
+                className="bg-surface border border-border text-ink text-xs font-mono px-3 py-1.5 rounded-full focus:outline-none focus:border-signal outline-none"
+              >
+                {datasets.map(d => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+          ) : dataset ? (
             <div className="text-sm text-muted font-mono bg-surface border border-border px-3 py-1 rounded-full">
               Target: {dataset.name}
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">

@@ -99,6 +99,14 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/cleaner"
+          element={
+            <ProtectedRoute>
+              <DataCleaner />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/settings"

@@ -40,6 +40,17 @@ const agents = [
       'Plain language interpretation of results',
     ],
   },
+  {
+    number: '04',
+    name: 'Data Cleaner',
+    description: 'Audit and clean messy data automatically. Impute missing values, fix outliers, and normalize schemas.',
+    capabilities: [
+      'Automatic missing value imputation',
+      'Outlier detection and handling',
+      'Before-and-after audit reports',
+      'Export cleaned ready-to-use datasets',
+    ],
+  },
 ];
 
 function AgentCard({ agent, index }) {
@@ -370,12 +381,12 @@ export default function Landing() {
 
       {/* Agents Section */}
       <section id="agents" className="py-32 px-6 relative z-10 bg-void">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="mb-16 text-center md:text-left">
-             <h2 className="font-mono text-3xl md:text-4xl text-ink mb-4">Three dedicated specialists.</h2>
-             <p className="text-muted text-lg max-w-2xl">A team of AI agents designed to tackle any data challenge, from simple queries to predictive modeling.</p>
+             <h2 className="font-mono text-3xl md:text-4xl text-ink mb-4">Four dedicated specialists.</h2>
+             <p className="text-muted text-lg max-w-2xl">A team of AI agents designed to tackle any data challenge, from conversational queries to predictive modeling and automated data hygiene.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {agents.map((agent, index) => (
               <AgentCard key={agent.number} agent={agent} index={index} />
             ))}

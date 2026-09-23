@@ -315,3 +315,19 @@ async def get_cleaning_session(
         "dataset_id": str(session.dataset_id),
         "cleaned_dataset_id": str(session.cleaned_dataset_id)
     }
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_cleaning_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    session = db.query(DataCleaningSession).filter(
+        DataCleaningSession.id == session_id,
+        DataCleaningSession.user_id == current_user.id
+    ).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    db.delete(session)
+    db.commit()
+    return None

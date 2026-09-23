@@ -214,7 +214,8 @@ except Exception as e:
                             args = json.loads(tool_call.function.arguments)
                             code = args.get("code", "")
                             
-                            yield f"data: {json.dumps({'status': 'thought', 'content': f'Running code in sandbox:\n```python\n{code}\n```'})}\n\n"
+                            code_thought = json.dumps({'status': 'thought', 'content': f'Running code in sandbox:\n```python\n{code}\n```'})
+                            yield f"data: {code_thought}\n\n"
                             
                             execution = await asyncio.to_thread(sandbox.run_code, code)
                             output = ""
@@ -226,7 +227,8 @@ except Exception as e:
                                 output += f"\nFATAL ERROR: {execution.error.name}: {execution.error.value}"
                                 
                             if output.strip():
-                                yield f"data: {json.dumps({'status': 'thought', 'content': f'Output:\n```\n{output[:1000]}\n```'})}\n\n"
+                                out_thought = json.dumps({'status': 'thought', 'content': f'Output:\n```\n{output[:1000]}\n```'})
+                                yield f"data: {out_thought}\n\n"
 
                             messages.append({
                                 "role": "tool",

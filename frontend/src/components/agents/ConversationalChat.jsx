@@ -59,7 +59,7 @@ export default function ConversationalChat() {
             
             // Map backend messages to frontend format
             const formattedMessages = sessionData.messages.map(msg => ({
-              role: msg.role,
+              role: (msg.role === 'assistant' || msg.role === 'agent') ? 'agent' : msg.role,
               content: msg.content,
               thought: msg.thought,
               toolCalls: msg.tool_calls
@@ -422,7 +422,7 @@ export default function ConversationalChat() {
             let displayContent = message.content || '';
             let extractedThought = message.thought || '';
             
-            if (message.role === 'agent' && displayContent) {
+            if ((message.role === 'agent' || message.role === 'assistant') && displayContent) {
               const thoughtRegex = /<thought>([\s\S]*?)(?:<\/thought>|$)/g;
               displayContent = displayContent.replace(thoughtRegex, (match, p1) => {
                 if (p1.trim()) {
@@ -440,7 +440,7 @@ export default function ConversationalChat() {
               }`}
             >
               <div className={`max-w-2xl ${message.role === 'user' ? 'w-full' : 'w-full'}`}>
-                {message.role === 'agent' && (
+                {(message.role === 'agent' || message.role === 'assistant') && (
                   <>
                     {/* Agent Thoughts Section */}
                     {(extractedThought || message.toolCalls) && (
@@ -501,11 +501,13 @@ export default function ConversationalChat() {
                         ) : (
                           <span>Please select a dataset from the <span className="hidden md:inline">left panel</span><span className="inline md:hidden">Data menu</span> to get started.</span>
                         )
-                      ) : (
+                      ) : displayContent ? (
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {displayContent}
                         </ReactMarkdown>
-                      )}
+                      ) : !extractedThought && (!message.toolCalls || message.toolCalls.length === 0) ? (
+                        <span className="text-muted italic text-xs">*(No response generated or response was interrupted)*</span>
+                      ) : null}
                     </div>
                   </>
                 )}

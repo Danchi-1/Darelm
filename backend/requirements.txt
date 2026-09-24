@@ -27,3 +27,4 @@ gunicorn
 apscheduler
 fpdf2
 kaggle
+boto3

@@ -31,11 +31,24 @@ class Settings(BaseSettings):
     MAIL_STARTTLS: bool = True
     MAIL_SSL_TLS: bool = False
     
-    # Aliyun OSS
+    # Aliyun OSS (Legacy)
     ALIYUN_ACCESS_KEY_ID: Optional[str] = None
     ALIYUN_ACCESS_KEY_SECRET: Optional[str] = None
     ALIYUN_OSS_ENDPOINT: Optional[str] = None
     ALIYUN_OSS_BUCKET_NAME: Optional[str] = None
+
+    # S3 / Neon Object Storage
+    S3_ENDPOINT_URL: Optional[str] = None
+    S3_ACCESS_KEY_ID: Optional[str] = None
+    S3_SECRET_ACCESS_KEY: Optional[str] = None
+    S3_BUCKET_NAME: Optional[str] = "darelm-s3bucket"
+    S3_REGION: Optional[str] = "us-east-1"
+    
+    # AWS / Neon S3 aliases
+    AWS_ENDPOINT_URL_S3: Optional[str] = None
+    AWS_ACCESS_KEY_ID: Optional[str] = None
+    AWS_SECRET_ACCESS_KEY: Optional[str] = None
+    AWS_REGION: Optional[str] = None
     
     # AI Models
     QWEN_API_KEY: Optional[str] = None

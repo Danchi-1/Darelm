@@ -276,6 +276,15 @@ def delete_session(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
         
+    if session.sandbox_id:
+        try:
+            from e2b_code_interpreter import Sandbox
+            import threading
+            _sid = session.sandbox_id
+            threading.Thread(target=lambda: Sandbox.connect(_sid).kill(), daemon=True).start()
+        except Exception:
+            pass
+
     db.delete(session)
     db.commit()
     return None

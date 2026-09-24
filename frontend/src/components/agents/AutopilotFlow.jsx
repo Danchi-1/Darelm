@@ -244,7 +244,9 @@ export default function AutopilotFlow() {
                 setExecutingMessage(data.message);
                 setIsExecuting(true);
               } else if (data.status === 'step_complete') {
-                setCompletedSteps(prev => [...prev, data.step.step_id - 1]);
+                if (data.step?.step_id) {
+                  setCompletedSteps(prev => [...prev, data.step.step_id - 1]);
+                }
               } else if (data.status === 'synthesizing') {
                 setExecutingMessage(data.message);
                 setIsExecuting(true);

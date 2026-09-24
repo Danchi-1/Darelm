@@ -189,6 +189,7 @@ async def execute_ml_experiment(
     BACKEND_HARD_TIMEOUT = 360 
     
     async def sse_generator():
+        sandbox = None
         try:
             # Pre-flight check: if local, ensure file actually exists before booting sandbox
             if storage_url and not storage_url.startswith("http") and not storage_url.startswith("oss://") and not storage_url.startswith("s3://"):

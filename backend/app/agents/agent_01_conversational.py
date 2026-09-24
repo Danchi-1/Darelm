@@ -178,16 +178,18 @@ After your `<thought>` block, provide the final, polished, direct answer to the 
             else:
                 history.append({"role": "assistant", "content": msg.content})
 
+    # Load current sandbox_id for this session (may be None for new sessions)
+    current_sandbox_id = session.sandbox_id
+
     def on_complete(content, thought, tool_calls):
-        # Save agent message with a fresh session to avoid stale connection timeouts
         from app.db.session import SessionLocal
         fresh_db = SessionLocal()
         try:
             agent_msg = ChatMessage(
-                session_id=session.id, 
-                role="agent", 
-                content=content or "", 
-                thought=thought, 
+                session_id=session.id,
+                role="agent",
+                content=content or "",
+                thought=thought,
                 tool_calls=json.dumps(tool_calls) if tool_calls else None
             )
             fresh_db.add(agent_msg)
@@ -195,15 +197,29 @@ After your `<thought>` block, provide the final, polished, direct answer to the 
         finally:
             fresh_db.close()
 
+    def on_sandbox_created(new_sandbox_id: str):
+        """Persist the new sandbox_id to the ChatSession so future messages reuse it."""
+        from app.db.session import SessionLocal
+        fresh_db = SessionLocal()
+        try:
+            fresh_db.query(ChatSession).filter(ChatSession.id == session.id).update(
+                {"sandbox_id": new_sandbox_id}
+            )
+            fresh_db.commit()
+        finally:
+            fresh_db.close()
+
     async def chat_stream():
         yield f"data: {json.dumps({'session_id': str(session.id)})}\n\n"
-        
+
         async for chunk in llm_client.stream_chat(
-            prompt=request.message, 
+            prompt=request.message,
             system_prompt=system_prompt,
             dataset_context=dataset_context,
             history=history,
-            on_complete=on_complete
+            on_complete=on_complete,
+            sandbox_id=current_sandbox_id,
+            on_sandbox_created=on_sandbox_created,
         ):
             yield chunk
 

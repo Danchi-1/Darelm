@@ -14,12 +14,75 @@ import {
   Check, 
   Maximize2, 
   Minimize2, 
-  Sparkles 
+  Sparkles,
+  Terminal as TerminalIcon,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import AppLayout from '../components/layout/AppLayout';
 import Button from '../components/ui/Button';
 import { useToastStore } from '../store/toastStore';
 import { api } from '../lib/api';
+
+const markdownComponents = {
+  table: ({ node, ...props }) => (
+    <div className="overflow-x-auto my-3 rounded-lg border border-border bg-[#121520]">
+      <table className="w-full text-xs text-left border-collapse" {...props} />
+    </div>
+  ),
+  thead: ({ node, ...props }) => (
+    <thead className="bg-[#191d2b] text-muted font-mono uppercase text-[11px] border-b border-border" {...props} />
+  ),
+  th: ({ node, ...props }) => (
+    <th className="px-3.5 py-2 font-semibold text-ink whitespace-nowrap" {...props} />
+  ),
+  td: ({ node, ...props }) => (
+    <td className="px-3.5 py-2 border-t border-border/40 text-ink/90 whitespace-normal" {...props} />
+  ),
+  ul: ({ node, ...props }) => (
+    <ul className="list-disc list-inside space-y-1 my-2 text-ink/90 text-xs sm:text-sm font-sans" {...props} />
+  ),
+  ol: ({ node, ...props }) => (
+    <ol className="list-decimal list-inside space-y-1 my-2 text-ink/90 text-xs sm:text-sm font-sans" {...props} />
+  ),
+  li: ({ node, ...props }) => (
+    <li className="text-ink/90 leading-relaxed" {...props} />
+  ),
+  strong: ({ node, ...props }) => (
+    <strong className="text-signal font-semibold" {...props} />
+  ),
+  hr: ({ node, ...props }) => (
+    <hr className="my-3 border-border/60" {...props} />
+  ),
+  h1: ({ node, ...props }) => (
+    <h1 className="text-sm sm:text-base font-mono font-bold text-ink mt-3 mb-2 flex items-center gap-2 border-b border-border/50 pb-1" {...props} />
+  ),
+  h2: ({ node, ...props }) => (
+    <h2 className="text-xs sm:text-sm font-mono font-bold text-signal mt-3 mb-1.5" {...props} />
+  ),
+  h3: ({ node, ...props }) => (
+    <h3 className="text-xs font-mono font-bold text-ink mt-2 mb-1" {...props} />
+  ),
+  p: ({ node, ...props }) => (
+    <p className="my-1.5 leading-relaxed text-xs sm:text-sm" {...props} />
+  ),
+  code: ({ node, inline, className, children, ...props }) => {
+    if (inline) {
+      return (
+        <code className="px-1.5 py-0.5 rounded bg-[#181b26] border border-border/60 text-signal font-mono text-xs" {...props}>
+          {children}
+        </code>
+      );
+    }
+    return (
+      <code className="block bg-[#090b11] p-3 rounded-lg border border-border/70 font-mono text-xs overflow-x-auto text-ink/95 my-2 custom-scrollbar" {...props}>
+        {children}
+      </code>
+    );
+  }
+};
 
 export default function DataCleaner() {
   const { id } = useParams();
@@ -33,10 +96,12 @@ export default function DataCleaner() {
   const [logs, setLogs] = useState([]);
   const [report, setReport] = useState(null);
   const [newDatasetId, setNewDatasetId] = useState(null);
+  const [activeTab, setActiveTab] = useState('terminal'); // 'summary' | 'terminal'
   const [filterText, setFilterText] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const logsEndRef = useRef(null);
+  const terminalContainerRef = useRef(null);
 
   useEffect(() => {
     const fetchDatasets = async () => {
@@ -57,10 +122,22 @@ export default function DataCleaner() {
   }, [id, addToast]);
 
   useEffect(() => {
+    if (activeTab === 'terminal' && isProcessing && logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs, activeTab, isProcessing]);
+
+  const scrollToTop = () => {
+    if (terminalContainerRef.current) {
+      terminalContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const scrollToBottom = () => {
     if (logsEndRef.current) {
       logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [logs]);
+  };
 
   const handleStartCleaning = async () => {
     const targetDatasetId = dataset?.id || id;
@@ -71,6 +148,7 @@ export default function DataCleaner() {
 
     const cleaningPrompt = instructions.trim();
     setIsProcessing(true);
+    setActiveTab('terminal');
     setLogs([{ type: 'info', content: cleaningPrompt ? 'Initializing custom cleaning pipeline...' : 'Understanding dataset and preparing automated cleaning...' }]);
     setReport(null);
 
@@ -124,6 +202,7 @@ export default function DataCleaner() {
                 setReport(data.report);
                 setNewDatasetId(data.report.new_dataset_id);
                 setIsProcessing(false);
+                setActiveTab('summary');
                 addToast('Dataset cleaned successfully!', 'success');
               }
             } catch (e) {
@@ -145,6 +224,22 @@ export default function DataCleaner() {
     addToast('Preview data copied to clipboard', 'info');
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const parseShapes = (text) => {
+    if (!text) return null;
+    const initialMatch = text.match(/initial\s+shape:?\*?\*?\s*\(?([0-9]+)\s*,\s*([0-9]+)\)?/i);
+    const finalMatch = text.match(/final\s+shape:?\*?\*?\s*\(?([0-9]+)\s*,\s*([0-9]+)\)?/i);
+    if (initialMatch || finalMatch) {
+      return {
+        initialRows: initialMatch ? initialMatch[1] : null,
+        initialCols: initialMatch ? initialMatch[2] : null,
+        finalRows: finalMatch ? finalMatch[1] : null,
+        finalCols: finalMatch ? finalMatch[2] : null,
+      };
+    }
+    return null;
+  };
+  const shapes = parseShapes(report?.summary);
 
   const columns = report?.preview && report.preview.length > 0 ? Object.keys(report.preview[0]) : [];
 
@@ -194,8 +289,8 @@ export default function DataCleaner() {
           ) : null}
         </div>
 
-        {/* Top Section: Config & Terminal */}
-        <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${report ? 'min-h-[360px] lg:h-[390px]' : 'flex-1 min-h-[520px]'}`}>
+        {/* Top Section: Config & Terminal/Report */}
+        <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${report ? 'min-h-[420px] lg:h-[450px]' : 'flex-1 min-h-[520px]'}`}>
           
           {/* Left Panel: Configuration / Summary */}
           {report ? (
@@ -217,6 +312,24 @@ export default function DataCleaner() {
                 </div>
 
                 <div className="space-y-3 my-4">
+                  {/* Before & After Shape Metrics */}
+                  {shapes && (
+                    <div className="grid grid-cols-2 gap-2 bg-[#0d0f17] p-3 rounded-lg border border-border/80">
+                      <div>
+                        <span className="text-[10px] text-muted uppercase tracking-wider block font-mono">Before Cleaning</span>
+                        <span className="text-xs font-mono font-semibold text-ink">
+                          {shapes.initialRows} rows × {shapes.initialCols} cols
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-muted uppercase tracking-wider block font-mono">After Cleaning</span>
+                        <span className="text-xs font-mono font-semibold text-signal flex items-center gap-1">
+                          {shapes.finalRows} rows × {shapes.finalCols} cols
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="bg-surface-raised border border-border rounded-lg p-3 text-xs font-mono space-y-1.5">
                     <div className="flex justify-between">
                       <span className="text-muted">Target Dataset:</span>
@@ -334,49 +447,147 @@ export default function DataCleaner() {
             </div>
           )}
 
-          {/* Right Panel: Execution Terminal */}
-          <div className="bg-[#0f111a] border border-border rounded-card flex flex-col min-h-[320px] lg:min-h-0 relative overflow-hidden font-mono text-sm shadow-xl">
-            {/* Terminal Header */}
-            <div className="h-10 bg-[#1a1d27] border-b border-border flex items-center px-4 gap-2 shrink-0">
-              <div className="w-3 h-3 rounded-full bg-error/80"></div>
-              <div className="w-3 h-3 rounded-full bg-warning/80"></div>
-              <div className="w-3 h-3 rounded-full bg-success/80"></div>
-              <span className="ml-2 text-xs text-muted/70 select-none">agent-04-data-engineer.exe</span>
+          {/* Right Panel: Tabbed Summary / Terminal */}
+          <div className="bg-[#0f111a] border border-border rounded-card flex flex-col min-h-[340px] lg:min-h-0 relative overflow-hidden font-mono text-sm shadow-xl">
+            {/* Terminal Header with Tabs */}
+            <div className="h-11 bg-[#161823] border-b border-border flex items-center justify-between px-4 shrink-0 select-none">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-error/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-warning/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-success/80"></div>
+                </div>
+
+                <div className="flex items-center gap-1 bg-[#0d0f17] p-0.5 rounded-lg border border-border/60">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('summary')}
+                    className={`px-3 py-1 rounded text-xs font-mono transition-all flex items-center gap-1.5 ${
+                      activeTab === 'summary'
+                        ? 'bg-signal/15 text-signal font-semibold border border-signal/30'
+                        : 'text-muted hover:text-ink'
+                    }`}
+                  >
+                    <FileText size={13} />
+                    <span>Cleaning Report</span>
+                    {report && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-signal animate-pulse"></span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('terminal')}
+                    className={`px-3 py-1 rounded text-xs font-mono transition-all flex items-center gap-1.5 ${
+                      activeTab === 'terminal'
+                        ? 'bg-signal/15 text-signal font-semibold border border-signal/30'
+                        : 'text-muted hover:text-ink'
+                    }`}
+                  >
+                    <TerminalIcon size={13} />
+                    <span>Terminal Logs</span>
+                    {isProcessing && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-warning animate-ping"></span>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Actions for Terminal */}
+              {activeTab === 'terminal' && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={scrollToTop}
+                    title="Scroll to beginning of logs"
+                    className="p-1 rounded text-muted hover:text-ink hover:bg-surface-raised transition-colors text-xs flex items-center gap-0.5 font-mono"
+                  >
+                    <ChevronUp size={13} /> Top
+                  </button>
+                  <button
+                    type="button"
+                    onClick={scrollToBottom}
+                    title="Scroll to latest log"
+                    className="p-1 rounded text-muted hover:text-ink hover:bg-surface-raised transition-colors text-xs flex items-center gap-0.5 font-mono"
+                  >
+                    <ChevronDown size={13} /> End
+                  </button>
+                </div>
+              )}
             </div>
             
-            {/* Terminal Body */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-              {logs.length === 0 ? (
-                <div className="text-muted/50 italic text-center mt-10">
-                  Waiting for instructions...
-                </div>
-              ) : (
-                logs.map((log, index) => (
-                  <div key={index} className="flex gap-3 animate-fade-in">
-                    <div className="shrink-0 w-5 flex items-center justify-center mt-0.5">
-                      {log.type === 'thought' && <span className="text-signal opacity-70">❯</span>}
-                      {log.type === 'info' && <span className="text-muted opacity-70">ℹ</span>}
-                      {log.type === 'error' && <span className="text-error">✖</span>}
-                    </div>
-                    <div className={`flex-1 whitespace-pre-wrap break-words leading-relaxed ${
-                      log.type === 'thought' ? 'text-ink/90' :
-                      log.type === 'error' ? 'text-error' : 'text-muted'
-                    }`}>
-                      {log.content}
-                    </div>
+            {/* Panel Body: Summary Tab vs Terminal Tab */}
+            {activeTab === 'summary' ? (
+              <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-[#0d0f17]">
+                {report?.summary ? (
+                  <div className="prose prose-invert prose-sm max-w-none text-ink/90 leading-relaxed font-sans">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={markdownComponents}
+                    >
+                      {report.summary}
+                    </ReactMarkdown>
                   </div>
-                ))
-              )}
-              {isProcessing && (
-                <div className="flex gap-3 items-center text-muted animate-pulse">
-                  <div className="shrink-0 w-5 flex justify-center">
-                    <div className="w-1.5 h-3 bg-signal"></div>
+                ) : isProcessing ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-8 text-muted">
+                    <div className="w-8 h-8 border-2 border-signal border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <p className="font-mono text-xs text-signal">Generating comprehensive cleaning report...</p>
+                    <p className="text-xs text-muted/60 mt-1 max-w-xs font-sans">
+                      The AI data engineer is currently inspecting distributions and applying transformations.
+                    </p>
                   </div>
-                  <span>Agent is working...</span>
-                </div>
-              )}
-              <div ref={logsEndRef} />
-            </div>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-8 text-muted/60 font-mono text-xs">
+                    <FileText size={28} className="text-muted/40 mb-2" />
+                    <span>Run auto-clean to see the full diagnosis, transformations, and summary report.</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div ref={terminalContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-[#0a0c12]">
+                {logs.length === 0 ? (
+                  <div className="text-muted/50 italic text-center mt-10 font-mono text-xs">
+                    Waiting for instructions...
+                  </div>
+                ) : (
+                  logs.map((log, index) => (
+                    <div key={index} className="flex gap-3 animate-fade-in text-xs sm:text-sm">
+                      <div className="shrink-0 w-5 flex items-center justify-center mt-1">
+                        {log.type === 'thought' && <span className="text-signal opacity-80">❯</span>}
+                        {log.type === 'info' && <span className="text-muted opacity-80">ℹ</span>}
+                        {log.type === 'error' && <span className="text-error">✖</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {log.type === 'thought' ? (
+                          <div className="prose prose-invert prose-sm max-w-none font-sans leading-relaxed text-ink/90">
+                            <ReactMarkdown 
+                              remarkPlugins={[remarkGfm]}
+                              components={markdownComponents}
+                            >
+                              {log.content}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
+                          <div className={`whitespace-pre-wrap break-words font-mono ${
+                            log.type === 'error' ? 'text-error' : 'text-muted'
+                          }`}>
+                            {log.content}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isProcessing && (
+                  <div className="flex gap-3 items-center text-muted animate-pulse font-mono text-xs pt-2">
+                    <div className="shrink-0 w-5 flex justify-center">
+                      <div className="w-1.5 h-3 bg-signal"></div>
+                    </div>
+                    <span>Agent is working...</span>
+                  </div>
+                )}
+                <div ref={logsEndRef} />
+              </div>
+            )}
           </div>
           
         </div>

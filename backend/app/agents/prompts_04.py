@@ -36,9 +36,18 @@ You have access to a secure E2B sandbox environment.
    - The script MUST save a preview JSON to `/home/user/preview.json` containing the first 10 rows of the cleaned data:
      `df.head(10).to_json('/home/user/preview.json', orient='records')`
 
-3. PHASE 3: SUMMARY
-   - Return a clear, concise summary of:
-     * Initial vs final dataset shape (rows, columns).
-     * Exact issues discovered in Phase 1 and actions taken in Phase 2.
-     * Improvements in data quality and readiness for downstream analytics.
+3. PHASE 3: COMPREHENSIVE FINAL REPORT
+   - When all transformations are executed and files are saved, your final response (without tool calls) MUST present a complete, beautifully structured cleaning report containing all three phases:
+     
+     ### Phase 1: Dataset Diagnosis & Profiling
+     - Initial dataset shape (rows, columns).
+     - Missing values, null percentages, duplicate count, and anomalies detected.
+
+     ### Phase 2: Transformations Applied
+     - A clean markdown table summarizing every transformation performed (column drops, imputations, outlier capping, type conversions, string cleaning).
+
+     ### Phase 3: Summary of Changes
+     - Before vs After Shape: `Initial: (rows, cols)` -> `Final: (rows, cols)`.
+     - Key data-quality improvements achieved.
+     - Confirmation of saved outputs: Cleaned CSV and Preview JSON.
 """

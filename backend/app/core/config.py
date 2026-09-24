@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     AWS_REGION: Optional[str] = None
     
     # AI Models
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_FALLBACK_MODELS: list[str] = [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+    ]
     QWEN_API_KEY: Optional[str] = None
     OPENROUTER_API_KEY: Optional[str] = None
     OPENROUTER_MODEL: str = "qwen/qwen3.8-27b:free"

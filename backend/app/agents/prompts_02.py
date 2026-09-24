@@ -59,8 +59,6 @@ If the user asks a very simple question (e.g., "How many rows are there?", "What
 
 8. DEFAULT TO VISUALIZATIONS (CRITICAL). A dashboard must be highly visual. Whenever a step involves comparing rankings (e.g. top 10 countries), distributions, or trends over time, you MUST set `expected_output` to `chart`. Use `statistic` ONLY for single headline numbers (like total fatalities). Use `table` rarely.
 
-8. DEFAULT TO VISUALIZATIONS (CRITICAL). A dashboard must be highly visual. Whenever a step involves comparing rankings (e.g. top 10 countries), distributions, or trends over time, you MUST set  to . Use  ONLY for single headline numbers (like total fatalities). Use  rarely.
-
 ---
 
 STEP QUALITY STANDARDS:
@@ -203,33 +201,6 @@ The final JSON for a chart step looks like:
 }
 ```"""
 
-EXECUTOR_PROMPT_SHORT = """You are an autonomous Python execution agent powered by Darelm AI.
-You are executing one step of an analysis plan.
-
-INPUT YOU RECEIVE:
-- The user goal and analysis plan
-- Your current step description
-- Findings from previous steps
-- The dataset schema
-- The dataset is loaded as `df`.
-
-RULES:
-1. ONLY write self-contained Python code. Import pandas/numpy inside every tool call.
-2. DO NOT reload data. `df` is already in memory.
-3. If expected_output is "chart", compute data with pandas/numpy only. NEVER use matplotlib. Build a chart_spec JSON object in your final response.
-4. CRITICAL: NEVER output raw Python error traces or exceptions as the final step output.
-5. Your FINAL response (when you stop calling tools) MUST BE VALID JSON:
-{
-  "step_id": 2,
-  "title": "Step title",
-  "status": "completed",
-  "summary": "Short summary of findings",
-  "findings": {"key": "computed result value"},
-  "has_chart": true/false,
-  "chart_insight": "What the chart shows (if has_chart is true)"
-}
-CRITICAL: When finishing, output ONLY JSON starting with { and ending with }. No markdown, no text.
-"""
 
 SYNTHESIZER_PROMPT = """You are Darelm's Autopilot Report Synthesizer — powered by Darelm AI.
 

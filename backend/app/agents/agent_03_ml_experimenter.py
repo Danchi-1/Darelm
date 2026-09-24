@@ -386,6 +386,11 @@ except Exception as e:
 
         except Exception as e:
             yield f"data: {json.dumps({'status': 'error', 'message': str(e)})}\n\n"
+            try:
+                if sandbox:
+                    await asyncio.to_thread(sandbox.kill)
+            except Exception:
+                pass
             
     db.commit() # Release DB connection back to the pool to prevent deadlock
     return StreamingResponse(sse_generator(), media_type="text/event-stream")

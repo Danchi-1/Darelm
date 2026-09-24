@@ -133,7 +133,7 @@ async def upload_dataset(
         # Kick off background compression if it's a local file
         background_tasks.add_task(compress_dataset_background, storage_url)
         
-        return dataset
+        return DatasetResponse.model_validate(dataset)
         
     except Exception as e:
         db.rollback()
@@ -202,7 +202,7 @@ def confirm_upload(
     
     background_tasks.add_task(compress_dataset_background, payload.object_key)
     
-    return dataset
+    return DatasetResponse.model_validate(dataset)
 
 
 @router.post("/connect", response_model=DatasetResponse)

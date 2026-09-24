@@ -52,14 +52,42 @@ def get_dataset_context(dataset_id: str, db: Session) -> dict:
                     return result
 
             if dataset.dataset_type.lower() == "csv":
-                df = pd.read_csv(path, nrows=5)
+                df_sample = pd.read_csv(path, nrows=100)
             else:
-                df = pd.read_excel(path, nrows=5)
-            
-            # Format schema
-            schema_dict = {col: str(dtype) for col, dtype in df.dtypes.items()}
+                df_sample = pd.read_excel(path, nrows=100)
+
+            # Schema: column name -> dtype
+            schema_dict = {col: str(dtype) for col, dtype in df_sample.dtypes.items()}
             result["schema"] = schema_dict
-            result["sample"] = df.to_dict(orient="records")
+            # Return 5 sample rows to keep prompt size reasonable
+            result["sample"] = df_sample.head(5).to_dict(orient="records")
+
+            # Row count — read full file with low memory usage (only index, no data columns)
+            try:
+                if dataset.dataset_type.lower() == "csv":
+                    row_count = sum(1 for _ in open(path, encoding="utf-8", errors="ignore")) - 1  # subtract header
+                else:
+                    df_full = pd.read_excel(path, usecols=[0])
+                    row_count = len(df_full)
+                result["row_count"] = row_count
+            except Exception:
+                result["row_count"] = None
+
+            # Null counts per column (from the 100-row sample — directional signal)
+            null_counts = df_sample.isnull().sum().to_dict()
+            result["null_counts_in_sample"] = {col: int(v) for col, v in null_counts.items() if v > 0}
+
+            # Value distributions for low-cardinality categorical columns
+            # (string/object columns with ≤20 unique values, capped at 5 columns)
+            distributions = {}
+            cat_cols = [
+                col for col in df_sample.select_dtypes(include=["object", "category"]).columns
+                if df_sample[col].nunique() <= 20
+            ]
+            for col in cat_cols[:5]:
+                distributions[col] = df_sample[col].value_counts().head(10).to_dict()
+            if distributions:
+                result["value_distributions"] = distributions
         except Exception as e:
             err_str = str(e)
             if "403" in err_str or "Forbidden" in err_str or "Expired" in err_str:

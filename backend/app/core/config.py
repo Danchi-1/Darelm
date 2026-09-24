@@ -60,11 +60,11 @@ class Settings(BaseSettings):
     ]
     QWEN_API_KEY: Optional[str] = None
     OPENROUTER_API_KEY: Optional[str] = None
-    OPENROUTER_MODEL: str = "qwen/qwen3.8-27b:free"
+    OPENROUTER_MODEL: str = "qwen/qwen3-8b:free"
     OPENROUTER_FALLBACK_MODELS: list[str] = [
-        "qwen/qwen3.8-27b:free",
-        "google/gemma-4-31b-it:free",
-        "nvidia/nemotron-3-super-120b-a12b:free",
+        "qwen/qwen3-8b:free",
+        "mistralai/mistral-7b-instruct:free",
+        "meta-llama/llama-3.1-8b-instruct:free",
     ]
     E2B_API_KEY: Optional[str] = None
     

@@ -287,7 +287,10 @@ except Exception as e:
                 from app.core.oss import OSSManager
                 oss_mgr = OSSManager()
                 
-                new_dataset_name = f"[Cleaned] {dataset_name.replace(ext, '')}.csv"
+                # The cleaning agent always outputs CSV (pandas default).
+                # If the source was Excel, we note the conversion in the name.
+                clean_base = dataset_name.replace(ext, '').strip()
+                new_dataset_name = f"[Cleaned] {clean_base}.csv"
                 dataset_url = await oss_mgr.upload_bytes(cleaned_bytes, extension=".csv")
                 
                 # Create new dataset entry
@@ -326,6 +329,11 @@ except Exception as e:
             session_model.status = "failed"
             db.commit()
             yield f"data: {json.dumps({'status': 'error', 'message': str(e)})}\n\n"
+            try:
+                if sandbox:
+                    await asyncio.to_thread(sandbox.kill)
+            except Exception:
+                pass
             
     db.commit()
     return StreamingResponse(sse_generator(), media_type="text/event-stream")

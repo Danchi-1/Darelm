@@ -25,6 +25,15 @@ def get_datasets(
 from fastapi import BackgroundTasks
 import os
 import gzip
+import threading
+import uuid as _uuid
+
+# In-memory job store for async Kaggle imports.
+# Keys are job_id strings; values are dicts with keys:
+#   status: 'pending' | 'completed' | 'failed'
+#   dataset: DatasetResponse-serialisable dict or None
+#   error: str or None
+_import_jobs: dict = {}
 
 def compress_dataset_background(storage_url: str):
     """Background task to compress local datasets and replace original."""
@@ -318,7 +327,136 @@ async def load_sample_dataset(
     return await import_url_dataset(request=req, background_tasks=background_tasks, db=db, current_user=current_user)
 
 
-@router.post("/import-url", response_model=DatasetResponse)
+def _run_kaggle_import(
+    job_id: str,
+    url: str,
+    encrypted_kaggle_username: str,
+    encrypted_kaggle_key: str,
+    user_id,
+    db_session_factory,
+):
+    """Blocking Kaggle download executed in a background thread."""
+    import uuid
+    import shutil
+    from urllib.parse import urlparse
+    from app.core.encryption import decrypt_data
+
+    _import_jobs[job_id] = {"status": "pending", "dataset": None, "error": None, "user_id": str(user_id)}
+
+    upload_dir = "uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    job_dir = os.path.join(upload_dir, f"kaggle_tmp_{job_id}")
+
+    try:
+        parsed = urlparse(url)
+        parts = parsed.path.strip('/').split('/')
+        if len(parts) < 3 or parts[0] != "datasets":
+            raise ValueError("Invalid Kaggle dataset URL format. Expected: https://www.kaggle.com/datasets/owner/name")
+
+        dataset_ref = f"{parts[1]}/{parts[2]}"
+
+        decrypted_username = decrypt_data(encrypted_kaggle_username)
+        decrypted_key = decrypt_data(encrypted_kaggle_key)
+
+        os.environ["KAGGLE_USERNAME"] = decrypted_username
+        os.environ["KAGGLE_KEY"] = decrypted_key
+
+        os.makedirs(job_dir, exist_ok=True)
+
+        import kaggle
+        kaggle.api.authenticate()
+        kaggle.api.dataset_download_files(dataset_ref, path=job_dir, unzip=True)
+
+        # Inspect downloaded files and select the primary data file (.csv, .xlsx, .xls)
+        downloaded_files = kaggle.api.dataset_list_files(dataset_ref).files
+        if not downloaded_files:
+            raise ValueError("No files found in the Kaggle dataset.")
+
+        # Find the first valid CSV/Excel file rather than blindly grabbing index 0 (which might be a README)
+        target_name = None
+        for f in downloaded_files:
+            fname = str(getattr(f, "name", f))
+            if fname.lower().endswith(('.csv', '.xlsx', '.xls')):
+                target_name = fname
+                break
+
+        if target_name:
+            original_path = os.path.join(job_dir, target_name)
+            downloaded_file_name = target_name
+        else:
+            downloaded_file_name = str(downloaded_files[0].name)
+            original_path = os.path.join(job_dir, downloaded_file_name)
+
+        # If not found directly at root of job_dir, scan recursively
+        if not os.path.exists(original_path) or not downloaded_file_name.lower().endswith(('.csv', '.xlsx', '.xls')):
+            found = False
+            for root, dirs, files in os.walk(job_dir):
+                for file in files:
+                    if file.lower().endswith(('.csv', '.xlsx', '.xls')):
+                        original_path = os.path.join(root, file)
+                        downloaded_file_name = file
+                        found = True
+                        break
+                if found:
+                    break
+            if not found:
+                raise ValueError("No CSV or Excel files found in the extracted Kaggle dataset.")
+
+        clean_filename = os.path.basename(downloaded_file_name)
+        unique_filename = f"{uuid.uuid4()}-{clean_filename}"
+        file_path = os.path.join(upload_dir, unique_filename)
+
+        # Move the data file into the permanent uploads folder
+        shutil.copy2(original_path, file_path)
+        shutil.rmtree(job_dir, ignore_errors=True)
+
+        dataset_type = "Excel" if clean_filename.lower().endswith(('.xlsx', '.xls')) else "CSV"
+        size_bytes = os.path.getsize(file_path)
+
+        if oss_manager.enabled:
+            storage_url = oss_manager.upload_local_file(file_path, original_filename=clean_filename)
+            if (storage_url.startswith("oss://") or storage_url.startswith("s3://")) and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception:
+                    pass
+        else:
+            storage_url = f"local://{file_path}"
+
+        db = db_session_factory()
+        try:
+            new_dataset = Dataset(
+                user_id=user_id,
+                name=clean_filename,
+                dataset_type=dataset_type,
+                size_bytes=size_bytes,
+                storage_url=storage_url,
+            )
+            db.add(new_dataset)
+            db.commit()
+            db.refresh(new_dataset)
+            _import_jobs[job_id] = {
+                "status": "completed",
+                "dataset": {
+                    "id": str(new_dataset.id),
+                    "name": new_dataset.name,
+                    "dataset_type": new_dataset.dataset_type,
+                    "size_bytes": new_dataset.size_bytes,
+                    "storage_url": new_dataset.storage_url,
+                    "created_at": new_dataset.created_at.isoformat() if new_dataset.created_at else None,
+                },
+                "error": None,
+                "user_id": str(user_id),
+            }
+        finally:
+            db.close()
+
+    except Exception as e:
+        shutil.rmtree(job_dir, ignore_errors=True)
+        _import_jobs[job_id] = {"status": "failed", "dataset": None, "error": str(e), "user_id": str(user_id)}
+
+
+@router.post("/import-url")
 async def import_url_dataset(
     request: ImportUrlRequest,
     background_tasks: BackgroundTasks,
@@ -329,101 +467,88 @@ async def import_url_dataset(
     import httpx
     from urllib.parse import urlparse
     import os
-    
-    url = request.url
+
+    url = request.url.strip()
+
+    # Automatically transform GitHub blob links into raw content links
+    if "github.com" in url and "/blob/" in url:
+        url = url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
+
     parsed = urlparse(url)
-    
-    # Simple extraction of filename
+
+    # --- Kaggle: offload to a background thread and return a job_id immediately ---
+    if "kaggle.com" in url:
+        from app.core.encryption import decrypt_data
+
+        if not current_user.encrypted_kaggle_username or not current_user.encrypted_kaggle_key:
+            raise HTTPException(status_code=400, detail="Kaggle credentials not configured in settings. Please add your Kaggle username and API key under Settings.")
+
+        # Validate URL shape before kicking off the thread
+        parts = parsed.path.strip('/').split('/')
+        if len(parts) < 3 or parts[0] != "datasets":
+            raise HTTPException(status_code=400, detail="Invalid Kaggle dataset URL format. Expected: https://www.kaggle.com/datasets/owner/name")
+
+        job_id = str(_uuid.uuid4())
+
+        from app.db.session import SessionLocal
+        t = threading.Thread(
+            target=_run_kaggle_import,
+            args=(
+                job_id,
+                url,
+                current_user.encrypted_kaggle_username,
+                current_user.encrypted_kaggle_key,
+                current_user.id,
+                SessionLocal,
+            ),
+            daemon=True,
+        )
+        t.start()
+
+        return {"job_id": job_id, "status": "pending"}
+
+    # --- Standard public URL download (synchronous, fast) ---
     filename = os.path.basename(parsed.path)
-    if not filename:
+    if not filename or not filename.lower().endswith(('.csv', '.xlsx', '.xls')):
         filename = "imported_dataset.csv"
-        
-    dataset_type = "Excel" if filename.lower().endswith('.xlsx') else "CSV"
-    
+
+    dataset_type = "Excel" if filename.lower().endswith(('.xlsx', '.xls')) else "CSV"
     unique_filename = f"{uuid.uuid4()}-{filename}"
     upload_dir = "uploads"
     os.makedirs(upload_dir, exist_ok=True)
     file_path = os.path.join(upload_dir, unique_filename)
-    
-    # Check if Kaggle
-    if "kaggle.com" in url:
-        from app.core.encryption import decrypt_data
-        
-        username = current_user.encrypted_kaggle_username
-        key = current_user.encrypted_kaggle_key
-        
-        if not username or not key:
-            raise HTTPException(status_code=400, detail="Kaggle credentials not configured in settings")
-            
-        decrypted_username = decrypt_data(username)
-        decrypted_key = decrypt_data(key)
-        
-        os.environ["KAGGLE_USERNAME"] = decrypted_username
-        os.environ["KAGGLE_KEY"] = decrypted_key
-        
-        # Format: https://www.kaggle.com/datasets/zsinghrahulk/global-air-pollution-dataset
-        parts = parsed.path.strip('/').split('/')
-        if len(parts) >= 3 and parts[0] == "datasets":
-            dataset_ref = f"{parts[1]}/{parts[2]}"
-        else:
-            raise HTTPException(status_code=400, detail="Invalid Kaggle dataset URL format")
-            
-        try:
-            import kaggle
-            kaggle.api.authenticate()
-            # This downloads to the current working directory, into a folder named after the dataset
-            kaggle.api.dataset_download_files(dataset_ref, path=upload_dir, unzip=True)
-            
-            # Find the downloaded file (assuming it's a CSV or Excel)
-            # Kaggle unzips into the upload_dir directly
-            # To reliably find it, we check the directory contents sorted by creation time
-            # For a production app, we would use the kaggle API to list files first
-            downloaded_files = kaggle.api.dataset_list_files(dataset_ref).files
-            if not downloaded_files:
-                raise HTTPException(status_code=404, detail="No files found in Kaggle dataset")
-                
-            downloaded_file_name = str(downloaded_files[0].name)
-            original_path = os.path.join(upload_dir, downloaded_file_name)
-            
-            # Fix: Kaggle sometimes unzips into a subfolder. Scan recursively if not found.
-            if not os.path.exists(original_path):
-                found = False
-                for root, dirs, files in os.walk(upload_dir):
-                    for file in files:
-                        if file.endswith(('.csv', '.xlsx', '.xls')):
-                            original_path = os.path.join(root, file)
-                            downloaded_file_name = file
-                            found = True
-                            break
-                    if found:
-                        break
-                if not found:
-                    raise HTTPException(status_code=404, detail="No CSV/Excel files found in the extracted Kaggle dataset.")
-                    
-            os.rename(original_path, file_path)
-            filename = downloaded_file_name
-            dataset_type = "Excel" if filename.lower().endswith('.xlsx') else "CSV"
-            
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Kaggle download failed: {str(e)}")
-    else:
-        # Standard Public URL download
-        try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
-                async with client.stream("GET", url) as response:
-                    response.raise_for_status()
-                    with open(file_path, "wb") as f:
-                        async for chunk in response.aiter_bytes(chunk_size=8192):
-                            f.write(chunk)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Failed to download from URL: {str(e)}")
-            
-    # Save to DB
+
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+            async with client.stream("GET", url) as response:
+                response.raise_for_status()
+                with open(file_path, "wb") as f:
+                    async for chunk in response.aiter_bytes(chunk_size=8192):
+                        f.write(chunk)
+    except Exception as e:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(status_code=400, detail=f"Failed to download from URL: {str(e)}")
+
+    # Verify the downloaded file is not an HTML webpage (e.g. preview page or error page)
+    try:
+        with open(file_path, "rb") as f:
+            head = f.read(512).strip().lower()
+            if head.startswith(b"<!doctype html") or head.startswith(b"<html") or b"<head" in head:
+                os.remove(file_path)
+                raise HTTPException(
+                    status_code=400, 
+                    detail="The provided URL returned a webpage (HTML) instead of raw CSV or Excel data. Please ensure you are using the direct raw download URL."
+                )
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+
     size_bytes = os.path.getsize(file_path)
-    
+
     if oss_manager.enabled:
         storage_url = oss_manager.upload_local_file(file_path, original_filename=filename)
-        # Remove local file if uploaded to cloud storage to keep ephemeral disk clean
         if (storage_url.startswith("oss://") or storage_url.startswith("s3://")) and os.path.exists(file_path):
             try:
                 os.remove(file_path)
@@ -438,11 +563,21 @@ async def import_url_dataset(
         name=filename,
         dataset_type=dataset_type,
         size_bytes=size_bytes,
-        storage_url=storage_url
+        storage_url=storage_url,
     )
-    
     db.add(new_dataset)
     db.commit()
     db.refresh(new_dataset)
-    
-    return new_dataset
+    return DatasetResponse.model_validate(new_dataset)
+
+
+@router.get("/import-status/{job_id}")
+def get_import_status(
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Poll the status of an async Kaggle import job."""
+    job = _import_jobs.get(job_id)
+    if job is None or (job.get("user_id") and job.get("user_id") != str(current_user.id)):
+        raise HTTPException(status_code=404, detail="Import job not found")
+    return job

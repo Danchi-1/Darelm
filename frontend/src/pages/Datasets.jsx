@@ -190,10 +190,47 @@ export default function Datasets() {
       addToast('Please enter a URL', 'error');
       return;
     }
-    
+
     setIsImporting(true);
     try {
-      await api.importDatasetFromUrl(importUrl);
+      const result = await api.importDatasetFromUrl(importUrl);
+
+      // Kaggle imports are async — the backend returns a job_id to poll.
+      if (result && result.job_id) {
+        const jobId = result.job_id;
+        addToast('Downloading from Kaggle in background...', 'info');
+
+        // Poll every 3 seconds with a 3-minute timeout
+        await new Promise((resolve, reject) => {
+          let elapsed = 0;
+          const MAX_TIMEOUT = 180000; // 3 minutes
+
+          const interval = setInterval(async () => {
+            elapsed += 3000;
+            if (elapsed >= MAX_TIMEOUT) {
+              clearInterval(interval);
+              reject(new Error('Kaggle import timed out after 3 minutes.'));
+              return;
+            }
+
+            try {
+              const status = await api.getImportStatus(jobId);
+              if (status.status === 'completed') {
+                clearInterval(interval);
+                resolve();
+              } else if (status.status === 'failed') {
+                clearInterval(interval);
+                reject(new Error(status.error || 'Kaggle import failed'));
+              }
+              // still 'pending' — keep polling
+            } catch (pollErr) {
+              clearInterval(interval);
+              reject(pollErr);
+            }
+          }, 3000);
+        });
+      }
+
       setShowUrlModal(false);
       setImportUrl('');
       await fetchDatasets();

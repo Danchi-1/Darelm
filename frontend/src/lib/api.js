@@ -165,6 +165,7 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ url }),
   }),
+  getImportStatus: (jobId) => apiRequest(`/datasets/import-status/${jobId}`),
   loadSampleDataset: () => apiRequest('/datasets/sample', {
     method: 'POST',
   }),

@@ -1,6 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Database, FileText } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  ArrowRight, 
+  Play, 
+  Database, 
+  FileText, 
+  CheckCircle2, 
+  RotateCcw, 
+  Table as TableIcon, 
+  Search, 
+  Copy, 
+  Check, 
+  Maximize2, 
+  Minimize2, 
+  Sparkles 
+} from 'lucide-react';
 import AppLayout from '../components/layout/AppLayout';
 import Button from '../components/ui/Button';
 import { useToastStore } from '../store/toastStore';
@@ -18,6 +33,9 @@ export default function DataCleaner() {
   const [logs, setLogs] = useState([]);
   const [report, setReport] = useState(null);
   const [newDatasetId, setNewDatasetId] = useState(null);
+  const [filterText, setFilterText] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
   const logsEndRef = useRef(null);
 
   useEffect(() => {
@@ -120,9 +138,27 @@ export default function DataCleaner() {
     }
   };
 
+  const handleCopyJson = () => {
+    if (!report?.preview) return;
+    navigator.clipboard.writeText(JSON.stringify(report.preview, null, 2));
+    setCopied(true);
+    addToast('Preview data copied to clipboard', 'info');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const columns = report?.preview && report.preview.length > 0 ? Object.keys(report.preview[0]) : [];
+
+  const filteredPreview = (report?.preview || []).filter((row) => {
+    if (!filterText.trim()) return true;
+    const q = filterText.toLowerCase();
+    return Object.values(row).some((val) =>
+      val !== null && val !== undefined && String(val).toLowerCase().includes(q)
+    );
+  });
+
   return (
     <AppLayout>
-      <div className="h-[calc(100vh-4rem)] flex flex-col p-6 max-w-7xl mx-auto gap-6">
+      <div className="min-h-[calc(100vh-4rem)] flex flex-col p-6 max-w-7xl mx-auto gap-6 pb-16">
         
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -158,92 +194,148 @@ export default function DataCleaner() {
           ) : null}
         </div>
 
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
+        {/* Top Section: Config & Terminal */}
+        <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${report ? 'min-h-[360px] lg:h-[390px]' : 'flex-1 min-h-[520px]'}`}>
           
-          {/* Left Panel: Configuration */}
-          <div className="flex flex-col gap-6 min-h-0 overflow-y-auto pr-2">
-            
-            <div className="bg-surface border border-border rounded-card p-6 flex flex-col flex-1">
-              <h2 className="font-mono text-lg text-ink mb-4 flex items-center gap-2">
-                <FileText size={20} /> Cleaning Instructions
-              </h2>
+          {/* Left Panel: Configuration / Summary */}
+          {report ? (
+            <div className="bg-surface border border-border rounded-card p-6 flex flex-col justify-between h-full shadow-lg animate-fade-in">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-signal/15 border border-signal/30 flex items-center justify-center text-signal">
+                      <CheckCircle2 size={18} />
+                    </div>
+                    <div>
+                      <h2 className="font-mono text-base text-ink font-semibold">Cleaning Completed</h2>
+                      <p className="text-xs text-muted">Transformed & saved to workspace</p>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-mono bg-signal-dim text-signal border border-signal/20 font-medium">
+                    Ready
+                  </span>
+                </div>
+
+                <div className="space-y-3 my-4">
+                  <div className="bg-surface-raised border border-border rounded-lg p-3 text-xs font-mono space-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="text-muted">Target Dataset:</span>
+                      <span className="text-ink font-medium">{dataset?.name || 'Dataset'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted">Cleaning Mode:</span>
+                      <span className="text-signal">{instructions.trim() ? 'Custom AI Rules' : 'Automated Auto-Clean'}</span>
+                    </div>
+                    {newDatasetId && (
+                      <div className="flex justify-between">
+                        <span className="text-muted">Status:</span>
+                        <span className="text-success font-medium">Saved to Database</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {instructions.trim() && (
+                    <div className="bg-surface-raised/60 border border-border/70 rounded-lg p-3">
+                      <span className="text-[11px] font-mono text-muted uppercase tracking-wider block mb-1">Custom Instructions Applied:</span>
+                      <p className="text-xs font-mono text-ink italic bg-surface/50 p-2 rounded border border-border/40 line-clamp-3">
+                        "{instructions}"
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2">
+                <Button 
+                  variant="primary" 
+                  size="lg" 
+                  onClick={() => navigate('/datasets')} 
+                  className="w-full shadow-md shadow-signal/10 flex items-center justify-center gap-2"
+                >
+                  <Database size={18} /> View in Datasets
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setReport(null)} 
+                  className="w-full text-muted hover:text-ink flex items-center justify-center gap-1.5 text-xs font-mono"
+                >
+                  <RotateCcw size={13} /> Clean Another or Adjust Rules
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-surface border border-border rounded-card p-6 flex flex-col h-full shadow-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-mono text-lg text-ink flex items-center gap-2">
+                  <FileText size={20} className="text-signal" /> Cleaning Instructions
+                </h2>
+                <span className="text-xs text-muted font-mono bg-surface-raised border border-border px-2.5 py-1 rounded-full">
+                  Agent 04
+                </span>
+              </div>
               <p className="text-muted text-sm mb-4">
                 Describe specific transformations, or leave blank to let the AI automatically inspect, understand, and clean the dataset (fixing missing values, removing duplicates, and handling outliers).
               </p>
               
-              <textarea
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-                disabled={isProcessing || report}
-                placeholder="Optional: Specify custom cleaning rules (e.g. 'Drop rows where Age < 0', 'Convert date to YYYY-MM-DD')... Or leave blank to auto-clean."
-                className="flex-1 min-h-[200px] w-full bg-surface-raised border border-border rounded-input p-4 text-ink font-mono text-sm resize-none focus:border-signal focus:outline-none transition-colors mb-6"
-              />
-
-              {report ? (
-                <div className="flex flex-col gap-4">
-                  <div className="bg-signal-dim border border-signal/20 rounded-card p-4 text-center">
-                    <span className="text-signal font-mono">✓ Cleaning Complete</span>
-                    <p className="text-sm text-muted mt-2">A new dataset has been saved to your workspace.</p>
-                  </div>
-                  <Button variant="primary" size="lg" onClick={() => navigate('/datasets')} className="w-full">
-                    View New Dataset
-                  </Button>
-                </div>
-              ) : (
-                <Button 
-                  variant="primary" 
-                  size="lg" 
-                  onClick={handleStartCleaning}
+              <div className="flex-1 flex flex-col min-h-0 mb-4">
+                <textarea
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
                   disabled={isProcessing}
-                  className="w-full"
-                >
-                  {isProcessing ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
-                      Understanding & Cleaning Dataset...
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center gap-2">
-                      <Play size={18} /> {instructions.trim() ? "Clean Dataset" : "Auto-Clean Dataset"}
-                    </span>
-                  )}
-                </Button>
-              )}
-            </div>
-
-            {report && report.preview && report.preview.length > 0 && (
-              <div className="bg-surface border border-border rounded-card p-6 animate-fade-in flex flex-col min-h-0">
-                <h2 className="font-mono text-lg text-ink mb-4">Cleaned Data Preview</h2>
-                <div className="overflow-auto bg-surface-raised border border-border rounded-card p-4">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-muted font-mono uppercase bg-surface">
-                      <tr>
-                        {Object.keys(report.preview[0]).map((key) => (
-                          <th key={key} className="px-4 py-2 border-b border-border">{key}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {report.preview.map((row, i) => (
-                        <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-surface transition-colors">
-                          {Object.values(row).map((val, j) => (
-                            <td key={j} className="px-4 py-2 text-ink whitespace-nowrap">
-                              {val !== null ? String(val) : <span className="text-muted italic">null</span>}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-xs text-muted mt-3 text-center">Showing top {report.preview.length} rows of the newly cleaned dataset.</p>
+                  placeholder="Optional: Specify custom cleaning rules (e.g. 'Drop rows where Age < 0', 'Impute missing values using group median', 'Remove outliers from Fare')... Or leave blank to auto-clean."
+                  className="flex-1 min-h-[160px] w-full bg-surface-raised border border-border rounded-input p-4 text-ink font-mono text-sm resize-none focus:border-signal focus:outline-none transition-colors"
+                />
               </div>
-            )}
-            
-          </div>
+
+              {/* Quick Presets / Suggestions when empty */}
+              {!instructions && !isProcessing && (
+                <div className="mb-4">
+                  <div className="text-[11px] font-mono text-muted uppercase tracking-wider mb-2 flex items-center gap-1">
+                    <Sparkles size={12} className="text-signal" /> Example prompts:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      "Handle all missing values and remove duplicates",
+                      "Cap numeric outliers at 99th percentile",
+                      "Normalize column names to snake_case"
+                    ].map((prompt, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setInstructions(prompt)}
+                        className="text-[11px] font-mono bg-surface-raised hover:bg-surface border border-border/80 hover:border-signal/40 text-muted hover:text-ink px-2.5 py-1 rounded-md transition-colors text-left"
+                      >
+                        + {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Button 
+                variant="primary" 
+                size="lg" 
+                onClick={handleStartCleaning}
+                disabled={isProcessing}
+                className="w-full shadow-lg shadow-signal/15"
+              >
+                {isProcessing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
+                    Cleaning & Transforming Dataset...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <Play size={18} /> {instructions.trim() ? "Clean Dataset" : "Auto-Clean Dataset"}
+                  </span>
+                )}
+              </Button>
+            </div>
+          )}
 
           {/* Right Panel: Execution Terminal */}
-          <div className="bg-[#0f111a] border border-border rounded-card flex flex-col min-h-0 relative overflow-hidden font-mono text-sm shadow-xl">
+          <div className="bg-[#0f111a] border border-border rounded-card flex flex-col min-h-[320px] lg:min-h-0 relative overflow-hidden font-mono text-sm shadow-xl">
             {/* Terminal Header */}
             <div className="h-10 bg-[#1a1d27] border-b border-border flex items-center px-4 gap-2 shrink-0">
               <div className="w-3 h-3 rounded-full bg-error/80"></div>
@@ -288,6 +380,159 @@ export default function DataCleaner() {
           </div>
           
         </div>
+
+        {/* Full-Width Bottom Section: Cleaned Data Preview */}
+        {report && report.preview && report.preview.length > 0 && (
+          <div className="w-full bg-surface border border-border rounded-card p-6 shadow-xl animate-fade-in flex flex-col gap-4">
+            {/* Preview Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-signal/10 border border-signal/20 text-signal">
+                  <TableIcon size={20} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h2 className="font-mono text-lg text-ink font-semibold">Cleaned Data Preview</h2>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-signal-dim text-signal border border-signal/30 font-medium">
+                      {report.preview.length} Rows Sample
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-surface-raised text-muted border border-border">
+                      {columns.length} Columns
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted mt-0.5">
+                    First {report.preview.length} rows of the newly cleaned, transformed, and validated dataset.
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions & Filter */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+                  <input
+                    type="text"
+                    placeholder="Filter preview rows..."
+                    value={filterText}
+                    onChange={(e) => setFilterText(e.target.value)}
+                    className="bg-surface-raised border border-border text-ink text-xs font-mono pl-8 pr-7 py-1.5 rounded-input focus:outline-none focus:border-signal w-40 sm:w-56"
+                  />
+                  {filterText && (
+                    <button 
+                      onClick={() => setFilterText('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-ink text-xs font-mono"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleCopyJson}
+                  title="Copy preview JSON to clipboard"
+                  className="text-xs"
+                >
+                  {copied ? <Check size={14} className="mr-1.5 text-signal" /> : <Copy size={14} className="mr-1.5" />}
+                  {copied ? 'Copied!' : 'Copy JSON'}
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  title={isExpanded ? "Collapse preview height" : "Expand preview height"}
+                  className="text-xs"
+                >
+                  {isExpanded ? <Minimize2 size={14} className="mr-1.5" /> : <Maximize2 size={14} className="mr-1.5" />}
+                  {isExpanded ? 'Default View' : 'Expand View'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Table Container */}
+            <div className={`w-full overflow-auto rounded-lg border border-border bg-[#0d0f17] custom-scrollbar transition-all duration-200 ${isExpanded ? 'max-h-[750px]' : 'max-h-[460px]'}`}>
+              <table className="w-full text-sm text-left border-collapse">
+                <thead className="text-xs text-muted font-mono uppercase bg-[#151824] sticky top-0 z-10 shadow-sm">
+                  <tr>
+                    <th className="px-3 py-3 border-b border-border text-center w-12 text-muted/60 bg-[#151824] sticky left-0 z-20">
+                      #
+                    </th>
+                    {columns.map((key) => (
+                      <th 
+                        key={key} 
+                        className="px-4 py-3 border-b border-border font-mono tracking-wider whitespace-nowrap text-muted hover:text-ink"
+                      >
+                        {key}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40 font-mono text-xs">
+                  {filteredPreview.length === 0 ? (
+                    <tr>
+                      <td colSpan={columns.length + 1} className="px-6 py-12 text-center text-muted italic">
+                        No rows matched filter "{filterText}"
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPreview.map((row, i) => (
+                      <tr 
+                        key={i} 
+                        className="hover:bg-surface-raised/80 transition-colors group"
+                      >
+                        <td className="px-3 py-2.5 text-center text-muted/50 border-r border-border/30 bg-[#0d0f17] group-hover:bg-[#131620] sticky left-0 z-10">
+                          {i + 1}
+                        </td>
+                        {columns.map((colKey, j) => {
+                          const val = row[colKey];
+                          return (
+                            <td key={j} className="px-4 py-2.5 text-ink whitespace-nowrap">
+                              {val === null || val === undefined ? (
+                                <span className="text-muted/40 italic px-1.5 py-0.5 rounded bg-surface/50 border border-border/30 text-[11px]">
+                                  null
+                                </span>
+                              ) : typeof val === 'boolean' ? (
+                                <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                  val ? 'bg-signal/15 text-signal border border-signal/30' : 'bg-muted/15 text-muted border border-border'
+                                }`}>
+                                  {String(val)}
+                                </span>
+                              ) : typeof val === 'number' ? (
+                                <span className="text-signal/90 font-mono">
+                                  {Number.isInteger(val) ? val : Number(val.toFixed(4))}
+                                </span>
+                              ) : (
+                                <span>{String(val)}</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer Stats & Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-muted font-mono pt-1">
+              <span>
+                {filterText 
+                  ? `Showing ${filteredPreview.length} of ${report.preview.length} rows matching "${filterText}"` 
+                  : `Showing all ${report.preview.length} sample rows across all ${columns.length} dataset columns.`}
+              </span>
+              <button 
+                onClick={() => navigate('/datasets')} 
+                className="text-signal hover:underline flex items-center gap-1 font-medium transition-colors"
+              >
+                Open full dataset in workspace <ArrowRight size={13} />
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
     </AppLayout>
   );

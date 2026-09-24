@@ -46,6 +46,10 @@ def get_dataset_context(dataset_id: str, db: Session) -> dict:
                 if not os.path.exists(path) and os.path.exists(f"{path}.gz"):
                     path = f"{path}.gz"
                     result["url_or_connection"] = path
+                elif not os.path.exists(path):
+                    result["file_missing"] = True
+                    result["error_loading_schema"] = f"Dataset file '{dataset.name}' was not found on disk. Local storage may have been cleared during a server restart."
+                    return result
 
             if dataset.dataset_type.lower() == "csv":
                 df = pd.read_csv(path, nrows=5)

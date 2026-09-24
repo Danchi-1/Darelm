@@ -231,6 +231,13 @@ async def confirm_autopilot(
                     import time
                     
                     def wait_and_upload(sb, raw_path, gz, filename):
+                        if not os.path.exists(raw_path) and not os.path.exists(gz) and not os.path.exists(f"{raw_path}.gz.tmp"):
+                            raise FileNotFoundError(
+                                f"Dataset file '{dataset_name}' was not found on the server. "
+                                "If Darelm was restarted or redeployed on ephemeral hosting (such as Render), "
+                                "locally stored files are reset. Please re-import or re-upload this dataset."
+                            )
+
                         # Fallback compression if background task failed or didn't run
                         if not os.path.exists(gz) and not os.path.exists(f"{raw_path}.gz.tmp"):
                             if os.path.exists(raw_path):

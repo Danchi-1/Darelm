@@ -190,6 +190,17 @@ async def execute_ml_experiment(
     
     async def sse_generator():
         try:
+            # Pre-flight check: if local, ensure file actually exists before booting sandbox
+            if storage_url and not storage_url.startswith("http") and not storage_url.startswith("oss://"):
+                chk_path = storage_url.replace("local://", "") if storage_url.startswith("local://") else storage_url
+                abs_chk = os.path.abspath(chk_path)
+                if not os.path.exists(abs_chk) and not os.path.exists(f"{abs_chk}.gz"):
+                    raise FileNotFoundError(
+                        f"Dataset file '{dataset_name}' was not found on the server. "
+                        "If Darelm was restarted or redeployed on ephemeral hosting (such as Render), "
+                        "locally stored files are reset. Please re-import or re-upload this dataset."
+                    )
+
             yield f"data: {json.dumps({'status': 'thought', 'content': 'Booting up secure sandbox...'})}\n\n"
             sandbox = await asyncio.to_thread(Sandbox.create, api_key=settings.E2B_API_KEY, timeout=BACKEND_HARD_TIMEOUT)
             
@@ -221,9 +232,14 @@ async def execute_ml_experiment(
                     if is_gz and os.path.exists(target_path):
                         with gzip.open(target_path, "rb") as f:
                             sandbox.files.write(f"/home/user/{sandbox_filename}", f.read())
-                    else:
+                    elif os.path.exists(target_path):
                         with open(target_path, "rb") as f:
                             sandbox.files.write(f"/home/user/{sandbox_filename}", f.read())
+                    else:
+                        raise FileNotFoundError(
+                            f"Dataset file '{dataset_name}' was not found at '{target_path}'. "
+                            "Please re-upload or re-import the dataset."
+                        )
                 await asyncio.to_thread(write_dataset)
             elif storage_url and storage_url.startswith("http"):
                 yield f"data: {json.dumps({'status': 'thought', 'content': 'Downloading dataset securely from cloud...'})}\n\n"

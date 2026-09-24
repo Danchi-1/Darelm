@@ -1,5 +1,20 @@
 import { useState } from 'react';
 import ChartRenderer from './ChartRenderer';
+import { Timer } from 'lucide-react';
+
+const formatHumanDuration = (totalSeconds) => {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds || 0));
+  if (safeSeconds === 0) return '0s';
+  const mins = Math.floor(safeSeconds / 60);
+  const secs = safeSeconds % 60;
+  if (mins === 0) return `${secs}s`;
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hours}h ${remMins}m ${secs}s`;
+  }
+  return `${mins}m ${secs}s`;
+};
 
 export default function DashboardView({ reportData }) {
   const [expandedSection, setExpandedSection] = useState(null);
@@ -12,6 +27,12 @@ export default function DashboardView({ reportData }) {
       {/* Header */}
       <div className="mb-6 text-center px-2">
         <h1 className="text-xl sm:text-3xl font-sans font-bold text-ink tracking-tight leading-snug">{reportData.title || 'Data Analysis Dashboard'}</h1>
+        {reportData.execution_time_seconds && (
+          <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-signal/10 border border-signal/20 text-signal font-mono text-xs font-semibold">
+            <Timer size={13} />
+            <span>Solved in {formatHumanDuration(reportData.execution_time_seconds)}</span>
+          </div>
+        )}
       </div>
 
       {/* Unified Fluid Grid */}

@@ -35,5 +35,6 @@ def get_shared_dashboard(
         "executive_summary": report.get("executive_summary", ""),
         "sections": report.get("sections", []),
         "conclusions": report.get("conclusions", []),
-        "recommendations": report.get("recommendations", [])
+        "recommendations": report.get("recommendations", []),
+        "execution_time_seconds": report.get("execution_time_seconds")
     }

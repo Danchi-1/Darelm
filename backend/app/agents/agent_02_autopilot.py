@@ -153,8 +153,9 @@ async def confirm_autopilot(
             dataset_context = get_dataset_context(str(dataset_id), db)
             
         try:
+            start_time = time.time()
             print("[EXECUTOR] Starting executor_stream...")
-            yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Provisioning secure analytical sandbox...'})}\n\n"
+            yield f"data: {json.dumps({'status': 'executing_step', 'step': 0, 'message': 'Provisioning secure analytical sandbox...', 'elapsed_seconds': 0})}\n\n"
             
             # Start or Connect to E2B Sandbox (30 mins = 1800s)
             sandbox_id = None
@@ -355,7 +356,7 @@ except Exception as e:
                         continue
                 
                 step_title = step.get("title", "")
-                yield f"data: {json.dumps({'status': 'executing_step', 'step': step_id, 'message': f'Starting: {step_title}'})}\n\n"
+                yield f"data: {json.dumps({'status': 'executing_step', 'step': step_id, 'message': f'Starting: {step_title}', 'elapsed_seconds': int(time.time() - start_time)})}\n\n"
                 
                 # Execute step ReAct loop
                 feedback_context = f"\nUSER FEEDBACK ON PLAN: {user_feedback_str}" if user_feedback_str else ""
@@ -508,10 +509,10 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
                 if step_completed_json:
                     all_findings[f"step_{step_id}"] = step_completed_json.get("findings", {})
                     
-                yield f"data: {json.dumps({'status': 'step_complete', 'step': step_completed_json})}\n\n"
+                yield f"data: {json.dumps({'status': 'step_complete', 'step': step_completed_json, 'elapsed_seconds': int(time.time() - start_time)})}\n\n"
                 
             # Phase 3: Synthesizer
-            yield f"data: {json.dumps({'status': 'synthesizing', 'message': 'Generating final report...'})}\n\n"
+            yield f"data: {json.dumps({'status': 'synthesizing', 'message': 'Generating final report...', 'elapsed_seconds': int(time.time() - start_time)})}\n\n"
             
             # Fetch all completed steps for synthesis
             with SessionLocal() as db:
@@ -556,6 +557,10 @@ COMPLETED FINDINGS:
                                 
             except:
                 report_json = {"error": "Failed to parse synthesizer JSON", "raw": report_response}
+
+            total_duration = max(1, int(time.time() - start_time))
+            if isinstance(report_json, dict):
+                report_json["execution_time_seconds"] = total_duration
                 
             with SessionLocal() as db:
                 db.query(AutopilotSession).filter(AutopilotSession.id == session_id_str).update({
@@ -564,7 +569,7 @@ COMPLETED FINDINGS:
                 })
                 db.commit()
             
-            yield f"data: {json.dumps({'status': 'completed', 'report': report_json})}\n\n"
+            yield f"data: {json.dumps({'status': 'completed', 'report': report_json, 'elapsed_seconds': total_duration})}\n\n"
             
             # Cleanup sandbox now that session is successfully completed
             if sandbox:
@@ -603,7 +608,7 @@ def get_autopilot_sessions(
     current_user: User = Depends(get_current_user)
 ):
     sessions = db.query(AutopilotSession).filter(AutopilotSession.user_id == current_user.id).order_by(AutopilotSession.created_at.desc()).all()
-    return [{"id": str(s.id), "title": s.goal[:50] + "..." if len(s.goal) > 50 else s.goal, "dataset_id": str(s.dataset_id), "created_at": s.created_at} for s in sessions]
+    return [{"id": str(s.id), "title": s.goal[:50] + "..." if len(s.goal) > 50 else s.goal, "dataset_id": str(s.dataset_id), "created_at": s.created_at.isoformat() if s.created_at else None} for s in sessions]
 
 @router.get("/sessions/{session_id}")
 def get_session(
@@ -624,6 +629,8 @@ def get_session(
         "status": session.status,
         "plan": json.loads(session.plan_json) if session.plan_json else None,
         "report": json.loads(session.report_json) if session.report_json else None,
+        "created_at": session.created_at.isoformat() if session.created_at else None,
+        "updated_at": session.updated_at.isoformat() if session.updated_at else None,
         "steps": [
             {
                 "id": s.id,

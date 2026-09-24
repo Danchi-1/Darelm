@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
@@ -7,9 +7,35 @@ import { useToastStore } from '../../store/toastStore';
 import { api } from '../../lib/api';
 import DashboardView from './DashboardView';
 import ChartRenderer from './ChartRenderer';
-import { FileText, Share2, Sparkles, LayoutDashboard, FileDown, MessageSquare } from 'lucide-react';
+import { FileText, Share2, Sparkles, LayoutDashboard, FileDown, MessageSquare, Timer, Clock, CheckCircle2 } from 'lucide-react';
 
 const phases = ['goal', 'planning', 'execution', 'report'];
+
+const formatTime = (totalSeconds) => {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds || 0));
+  const mins = Math.floor(safeSeconds / 60);
+  const secs = safeSeconds % 60;
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hours}:${String(remMins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+};
+
+const formatHumanDuration = (totalSeconds) => {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds || 0));
+  if (safeSeconds === 0) return '0s';
+  const mins = Math.floor(safeSeconds / 60);
+  const secs = safeSeconds % 60;
+  if (mins === 0) return `${secs}s`;
+  if (mins >= 60) {
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return `${hours}h ${remMins}m ${secs}s`;
+  }
+  return `${mins}m ${secs}s`;
+};
 
 export default function AutopilotFlow() {
   const navigate = useNavigate();
@@ -30,6 +56,57 @@ export default function AutopilotFlow() {
   const addToast = useToastStore((state) => state.addToast);
   const { id } = useParams();
 
+  // Execution-aware count-up timer state
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isExecuting, setIsExecuting] = useState(true);
+  const startTimeRef = useRef(null);
+  const accumulatedSecondsRef = useRef(0);
+
+  // Background-aware count-up timer:
+  // ONLY counts when actively executing analysis in the background
+  useEffect(() => {
+    let interval = null;
+
+    if (phase === 'execution' && isExecuting) {
+      if (!startTimeRef.current) {
+        startTimeRef.current = Date.now();
+      }
+
+      interval = setInterval(() => {
+        const now = Date.now();
+        const currentSegment = Math.floor((now - startTimeRef.current) / 1000);
+        setElapsedSeconds(accumulatedSecondsRef.current + currentSegment);
+      }, 1000);
+    } else {
+      if (startTimeRef.current) {
+        const now = Date.now();
+        const currentSegment = Math.floor((now - startTimeRef.current) / 1000);
+        accumulatedSecondsRef.current += currentSegment;
+        startTimeRef.current = null;
+      }
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [phase, isExecuting]);
+
+  // Sync with session timestamp if recovering an ongoing execution
+  useEffect(() => {
+    if (phase === 'execution' && sessionId && accumulatedSecondsRef.current === 0 && !startTimeRef.current) {
+      api.autopilotGetSession(sessionId).then((data) => {
+        if (data?.created_at && !data.report) {
+          const pastSeconds = Math.max(0, Math.floor((Date.now() - new Date(data.created_at).getTime()) / 1000));
+          if (pastSeconds > 0) {
+            accumulatedSecondsRef.current = pastSeconds;
+            startTimeRef.current = Date.now();
+            setElapsedSeconds(pastSeconds);
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [phase, sessionId]);
+
   useEffect(() => {
     if (id && id !== 'new') {
       const fetchSession = async () => {
@@ -43,9 +120,23 @@ export default function AutopilotFlow() {
           if (data.status === 'completed' && data.report) {
             setReportData(data.report);
             setPhase('report');
+            setIsExecuting(false);
+
+            const pastDuration = data.report.execution_time_seconds || 
+              (data.created_at && data.updated_at ? Math.max(1, Math.round((new Date(data.updated_at) - new Date(data.created_at)) / 1000)) : 0);
+            setElapsedSeconds(pastDuration);
+            accumulatedSecondsRef.current = pastDuration;
           } else if (data.status === 'executing') {
             setPhase('execution');
             setExecutingMessage('Session is currently executing or failed to finish cleanly.');
+
+            const elapsed = data.created_at 
+              ? Math.max(0, Math.floor((Date.now() - new Date(data.created_at)) / 1000))
+              : 0;
+            setElapsedSeconds(elapsed);
+            accumulatedSecondsRef.current = elapsed;
+            startTimeRef.current = Date.now();
+            setIsExecuting(true);
             
             if (data.steps && data.steps.length > 0) {
               const completedIdxs = data.steps
@@ -112,6 +203,8 @@ export default function AutopilotFlow() {
   const handleConfirmPlan = () => {
     setIsConfirming(true);
     setPhase('execution');
+    setIsExecuting(true);
+    startTimeRef.current = Date.now();
     
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/agents/02/confirm`, {
       method: 'POST',
@@ -138,17 +231,36 @@ export default function AutopilotFlow() {
             try {
               const data = JSON.parse(line.slice(6));
               
+              if (typeof data.elapsed_seconds === 'number') {
+                accumulatedSecondsRef.current = data.elapsed_seconds;
+                startTimeRef.current = Date.now();
+                setElapsedSeconds(data.elapsed_seconds);
+              }
+
               if (data.status === 'executing_step') {
                 setCurrentStep(data.step - 1); // 0-indexed for UI
                 setExecutingMessage(data.message);
+                setIsExecuting(true);
               } else if (data.status === 'step_complete') {
                 setCompletedSteps(prev => [...prev, data.step.step_id - 1]);
               } else if (data.status === 'synthesizing') {
                 setExecutingMessage(data.message);
+                setIsExecuting(true);
               } else if (data.status === 'completed') {
-                setReportData(data.report);
+                setIsExecuting(false);
+                const finalDuration = typeof data.elapsed_seconds === 'number'
+                  ? data.elapsed_seconds
+                  : (accumulatedSecondsRef.current + (startTimeRef.current ? Math.floor((Date.now() - startTimeRef.current) / 1000) : 0));
+                
+                const finalReport = {
+                  ...data.report,
+                  execution_time_seconds: data.report?.execution_time_seconds || finalDuration
+                };
+                setElapsedSeconds(finalDuration);
+                setReportData(finalReport);
                 setPhase('report');
               } else if (data.status === 'error') {
+                setIsExecuting(false);
                 addToast(data.message, 'error');
                 setPhase('planning');
                 setIsConfirming(false);
@@ -161,6 +273,7 @@ export default function AutopilotFlow() {
       }
     }).catch(err => {
       console.error(err);
+      setIsExecuting(false);
       addToast('Execution failed', 'error');
       setPhase('planning');
     });
@@ -235,7 +348,11 @@ export default function AutopilotFlow() {
               <p className="text-muted mb-6">Agent is creating a step-by-step plan...</p>
             ) : (
               <>
-                <p className="text-muted mb-6">Review the plan below before execution begins.</p>
+                <p className="text-muted mb-3">Review the plan below before execution begins.</p>
+                <div className="flex items-center gap-2 text-xs font-mono text-muted mb-6 bg-surface p-3 rounded-card border border-border/60">
+                  <Clock size={14} className="text-muted shrink-0" />
+                  <span>Timer will start counting once you confirm and run analysis.</span>
+                </div>
                 
                 {planData.checkpoint_question && (
                   <div className="bg-surface-raised border border-warn rounded-card p-4 mb-6">
@@ -282,53 +399,145 @@ export default function AutopilotFlow() {
           </div>
         );
 
-      case 'execution':
+      case 'execution': {
+        const isPausedOrError = executingMessage.includes('failed to finish cleanly') || !isExecuting;
+        const percentComplete = steps.length > 0 ? Math.round((completedSteps.length / steps.length) * 100) : 0;
+
         return (
           <div className="max-w-2xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="font-mono text-2xl text-ink mb-2">Executing analysis</h2>
-                <p className="text-muted font-mono text-sm">{executingMessage || 'Initializing...'}</p>
+            {/* Live Count-Up Timer & Execution Cockpit */}
+            <div className="bg-surface border border-border rounded-card p-6 mb-8 shadow-sm relative overflow-hidden">
+              {/* Subtle ambient glow */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-signal/5 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
+                {/* Timer Section */}
+                <div className="text-center sm:text-left">
+                  <div className="flex items-center gap-2 mb-1.5 justify-center sm:justify-start">
+                    <span className="relative flex h-2.5 w-2.5">
+                      {isExecuting ? (
+                        <>
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-signal opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-signal"></span>
+                        </>
+                      ) : (
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-warn"></span>
+                      )}
+                    </span>
+                    <span className="font-mono text-xs uppercase tracking-wider text-muted font-medium">
+                      {isExecuting ? 'Agent Active • Elapsed Time' : 'Execution Paused'}
+                    </span>
+                  </div>
+
+                  <div className="font-mono text-4xl sm:text-5xl font-bold text-ink tracking-tight flex items-baseline gap-2 justify-center sm:justify-start">
+                    <span>{formatTime(elapsedSeconds)}</span>
+                    <span className="text-xs font-mono text-muted uppercase tracking-normal font-normal">
+                      ({formatHumanDuration(elapsedSeconds)})
+                    </span>
+                  </div>
+
+                  <p className="text-muted text-xs mt-1.5">
+                    {isExecuting
+                      ? 'Working on analytical problem in secure sandbox...'
+                      : 'Execution paused. Not counting background time.'}
+                  </p>
+                </div>
+
+                {/* Live Progress Cockpit */}
+                <div className="w-full sm:w-64 bg-surface-raised/40 border border-border/60 rounded-card p-4">
+                  <div className="flex justify-between items-center text-xs font-mono mb-2">
+                    <span className="text-muted">Progress</span>
+                    <span className="text-signal font-semibold">
+                      {completedSteps.length} of {steps.length} steps ({percentComplete}%)
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full bg-void rounded-full h-2 overflow-hidden mb-2.5 border border-border/40">
+                    <motion.div
+                      className="bg-signal h-full rounded-full"
+                      initial={false}
+                      animate={{ width: `${percentComplete}%` }}
+                      transition={{ duration: 0.4 }}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-muted font-mono truncate">
+                    <span className="shrink-0 text-signal">↳</span>
+                    <span className="truncate" title={executingMessage || 'Running analysis code in sandbox...'}>
+                      {executingMessage || 'Running analysis code in sandbox...'}
+                    </span>
+                  </div>
+                </div>
               </div>
-              {executingMessage.includes('failed to finish cleanly') && (
-                <Button variant="primary" size="sm" onClick={handleConfirmPlan}>
-                  Resume Execution
-                </Button>
+
+              {isPausedOrError && (
+                <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
+                  <span className="text-xs text-warn font-mono">Execution stopped or interrupted</span>
+                  <Button variant="primary" size="sm" onClick={handleConfirmPlan}>
+                    Resume Execution
+                  </Button>
+                </div>
               )}
             </div>
+
+            {/* Title and subheader */}
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="font-mono text-xl text-ink font-semibold">Executing analysis</h2>
+                <p className="text-muted font-mono text-xs">{executingMessage || 'Running analysis code in sandbox...'}</p>
+              </div>
+            </div>
+
+            {/* Step list */}
             <div className="space-y-3">
               {steps.map((step, index) => {
                 const isCompleted = completedSteps.includes(index);
-                const isActive = index === currentStep;
-                const isPending = index > currentStep;
+                const isActive = index === currentStep && isExecuting;
+                const isPending = index > currentStep || (!isExecuting && !isCompleted);
 
                 return (
                   <motion.div
                     key={index}
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className={`p-4 rounded-card border ${
+                    className={`p-4 rounded-card border transition-all duration-300 ${
                       isActive
-                        ? 'bg-surface-raised border-signal border-l-4'
+                        ? 'bg-surface-raised border-signal border-l-4 shadow-sm'
                         : isCompleted
-                        ? 'bg-surface border-border opacity-60'
+                        ? 'bg-surface border-border opacity-70'
                         : 'bg-surface border-border opacity-40'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      {isActive && (
-                        <motion.span
-                          animate={{ opacity: [0.4, 1, 0.4] }}
-                          transition={{ duration: 1, repeat: Infinity }}
-                          className="w-2 h-2 bg-signal rounded-full shrink-0"
-                        />
-                      )}
-                      {isCompleted && <span className="text-signal shrink-0">✓</span>}
-                      {isPending && <span className="text-muted shrink-0">○</span>}
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 shrink-0">
+                        {isActive && (
+                          <motion.span
+                            animate={{ opacity: [0.4, 1, 0.4], scale: [0.9, 1.1, 0.9] }}
+                            transition={{ duration: 1.2, repeat: Infinity }}
+                            className="inline-block w-2.5 h-2.5 bg-signal rounded-full"
+                          />
+                        )}
+                        {isCompleted && <span className="text-signal font-bold">✓</span>}
+                        {isPending && <span className="text-muted">○</span>}
+                      </div>
+
                       <div className="flex-1 min-w-0">
-                        <div className="text-ink font-medium">{step.title}</div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-ink font-medium">{step.title}</span>
+                          {isActive && (
+                            <span className="text-[11px] font-mono text-signal bg-signal/10 px-2 py-0.5 rounded-full border border-signal/20 shrink-0">
+                              Running...
+                            </span>
+                          )}
+                          {isCompleted && (
+                            <span className="text-[11px] font-mono text-muted shrink-0">
+                              Done
+                            </span>
+                          )}
+                        </div>
                         {(isActive || isCompleted) && (
-                          <div className="text-muted text-sm mt-1">{step.description}</div>
+                          <div className="text-muted text-sm mt-1 leading-relaxed">{step.description}</div>
                         )}
                       </div>
                     </div>
@@ -338,6 +547,7 @@ export default function AutopilotFlow() {
             </div>
           </div>
         );
+      }
 
       case 'report':
         if (!reportData) return <div className="max-w-4xl mx-auto text-center mt-20"><p className="text-muted">Loading report...</p></div>;
@@ -362,6 +572,10 @@ export default function AutopilotFlow() {
                   <Button variant="primary" size="md" className="w-full sm:w-auto justify-center flex items-center gap-2" onClick={() => {
                     setPhase('goal');
                     setSessionId(null);
+                    setElapsedSeconds(0);
+                    accumulatedSecondsRef.current = 0;
+                    startTimeRef.current = null;
+                    setIsExecuting(false);
                     navigate('/session/new?agent=02');
                   }}>
                     <Sparkles size={18} /> New Analysis
@@ -374,10 +588,23 @@ export default function AutopilotFlow() {
 
         return (
           <div className="max-w-4xl mx-auto px-0 sm:px-4">
-            {/* Clean title — no buttons interrupting the reading flow */}
-            <h2 className="font-sans text-xl sm:text-3xl font-bold text-ink leading-tight mb-8 text-center sm:text-left">
-              {reportData.title || 'Analysis Report'}
-            </h2>
+            <div className="mb-8 text-center sm:text-left">
+              <h2 className="font-sans text-xl sm:text-3xl font-bold text-ink leading-tight mb-3">
+                {reportData.title || 'Analysis Report'}
+              </h2>
+
+              {/* Execution Duration & Step Metrics Badge Row */}
+              <div className="flex flex-wrap items-center gap-2.5 justify-center sm:justify-start">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-signal/10 border border-signal/20 text-signal font-mono text-xs font-semibold">
+                  <Timer size={14} />
+                  <span>Completed in {formatHumanDuration(reportData.execution_time_seconds || elapsedSeconds)}</span>
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-raised border border-border text-muted font-mono text-xs">
+                  <CheckCircle2 size={14} className="text-signal" />
+                  <span>{steps.length || completedSteps.length || (reportData.sections ? reportData.sections.length : 0)} steps executed</span>
+                </div>
+              </div>
+            </div>
 
             <div className="space-y-6">
               <div className="bg-surface border border-border rounded-card p-4 sm:p-6 shadow-sm">
@@ -474,7 +701,14 @@ export default function AutopilotFlow() {
                 >
                   <MessageSquare size={18} /> Chat with Agent 01
                 </Button>
-                <Button variant="primary" size="md" className="w-full sm:w-auto justify-center flex items-center gap-2" onClick={() => setPhase('goal')}>
+                <Button variant="primary" size="md" className="w-full sm:w-auto justify-center flex items-center gap-2" onClick={() => {
+                  setPhase('goal');
+                  setSessionId(null);
+                  setElapsedSeconds(0);
+                  accumulatedSecondsRef.current = 0;
+                  startTimeRef.current = null;
+                  setIsExecuting(false);
+                }}>
                   <Sparkles size={18} /> New Analysis
                 </Button>
               </div>

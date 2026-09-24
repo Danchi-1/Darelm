@@ -62,6 +62,79 @@ class LLMClient:
         client, models, provider = self._get_client_and_models(tier)
         return client, (models[0] if models else None)
 
+    def _extract_code_from_failed_generation(self, e) -> str | None:
+        import re
+        failed_gen = None
+        if hasattr(e, "body") and isinstance(e.body, dict):
+            err_dict = e.body.get("error", {})
+            if isinstance(err_dict, dict):
+                failed_gen = err_dict.get("failed_generation")
+            elif "failed_generation" in e.body:
+                failed_gen = e.body.get("failed_generation")
+        if not failed_gen:
+            match = re.search(r"['\"]failed_generation['\"]\s*:\s*['\"](.*?)['\"]\s*\}", str(e), re.DOTALL)
+            if match:
+                failed_gen = match.group(1)
+        if not failed_gen:
+            failed_gen = str(e)
+
+        # Extract "code": "..."
+        m = re.search(r"\"arguments\"\s*:\s*\{\s*\"code\"\s*:\s*\"(.*?)(?:\"\]\}\"|\"\}\}|\"\}|\Z)", failed_gen, re.DOTALL)
+        if not m:
+            m = re.search(r"\"code\"\s*:\s*\"(.*?)(?:\"\]\}\"|\"\}\}|\"\}|\Z)", failed_gen, re.DOTALL)
+        if m:
+            raw_code = m.group(1)
+            code = raw_code.replace("\\n", "\n").replace('\\"', '"').replace("\\'", "'")
+            return code
+        return None
+
+    def _build_synthetic_tool_call_response(self, tool_name: str, arguments: dict):
+        class SyntheticFunction:
+            def __init__(self, name: str, args_str: str):
+                self.name = name
+                self.arguments = args_str
+
+        class SyntheticToolCall:
+            def __init__(self, call_id: str, name: str, args_str: str):
+                self.id = call_id
+                self.type = "function"
+                self.function = SyntheticFunction(name, args_str)
+
+            def model_dump(self, **kwargs):
+                return {
+                    "id": self.id,
+                    "type": "function",
+                    "function": {"name": self.function.name, "arguments": self.function.arguments}
+                }
+
+        class SyntheticMessage:
+            def __init__(self, tool_calls: list):
+                self.role = "assistant"
+                self.content = None
+                self.tool_calls = tool_calls
+
+            def model_dump(self, **kwargs):
+                return {
+                    "role": "assistant",
+                    "tool_calls": [tc.model_dump() for tc in self.tool_calls]
+                }
+
+        class SyntheticChoice:
+            def __init__(self, message: SyntheticMessage):
+                self.message = message
+                self.finish_reason = "tool_calls"
+                self.index = 0
+
+        class SyntheticChatCompletion:
+            def __init__(self, choice: SyntheticChoice):
+                self.choices = [choice]
+
+        args_str = json.dumps(arguments)
+        tc = SyntheticToolCall("call_recovered_1", tool_name, args_str)
+        msg = SyntheticMessage([tc])
+        choice = SyntheticChoice(msg)
+        return SyntheticChatCompletion(choice)
+
     async def chat_completion(self, messages: list, tools: list = None, tier="smart", retries: int = 3):
         client, models, provider = self._get_client_and_models(tier)
         if not client or not models:
@@ -89,13 +162,23 @@ class LLMClient:
                 except Exception as e:
                     last_error = e
                     err_str = str(e)
-                    is_rate_limit = any(
+                    
+                    # 1. Recover tool code from failed_generation if Groq trips on closing brackets
+                    if "failed to parse tool call" in err_str.lower() or "tool_use_failed" in err_str.lower():
+                        recovered_code = self._extract_code_from_failed_generation(e)
+                        if recovered_code:
+                            logger.info(f"[{provider.upper()} Chat] Recovered tool code from failed_generation!")
+                            return self._build_synthetic_tool_call_response("execute_python", {"code": recovered_code})
+
+                    # 2. Check for retryable/transient errors or fallback to backup models
+                    is_retryable = any(
                         tok in err_str.lower() for tok in [
                             "429", "ratelimit", "rate-limited", "rate limit",
-                            "404", "502", "503", "504", "temporarily", "upstream", "overloaded"
+                            "404", "502", "503", "504", "temporarily", "upstream", "overloaded",
+                            "tool_use_failed", "failed to parse tool call"
                         ]
                     )
-                    if is_rate_limit:
+                    if is_retryable:
                         logger.warning(f"[{provider.upper()} Chat] Model '{model_name}' hit rate limit/error: {err_str[:120]}. Falling back...")
                         await asyncio.sleep(1)
                         continue

@@ -227,7 +227,14 @@ except Exception as e:
                         
                     for tool_call in message.tool_calls:
                         if tool_call.function.name == "execute_python":
-                            args = json.loads(tool_call.function.arguments)
+                            try:
+                                args = json.loads(tool_call.function.arguments)
+                            except Exception:
+                                try:
+                                    from json_repair import repair_json
+                                    args = json.loads(repair_json(tool_call.function.arguments))
+                                except Exception:
+                                    args = {"code": tool_call.function.arguments}
                             code = args.get("code", "")
                             
                             code_thought = json.dumps({'status': 'thought', 'content': f'Running code in sandbox:\n```python\n{code}\n```'})

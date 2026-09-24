@@ -114,7 +114,7 @@ async def execute_cleaning_session(
     async def sse_generator():
         try:
             # Pre-flight check: if local, ensure file actually exists before booting sandbox
-            if storage_url and not storage_url.startswith("http") and not storage_url.startswith("oss://"):
+            if storage_url and not storage_url.startswith("http") and not storage_url.startswith("oss://") and not storage_url.startswith("s3://"):
                 chk_path = storage_url.replace("local://", "") if storage_url.startswith("local://") else storage_url
                 abs_chk = os.path.abspath(chk_path)
                 if not os.path.exists(abs_chk) and not os.path.exists(f"{abs_chk}.gz"):

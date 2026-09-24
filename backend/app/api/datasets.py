@@ -168,7 +168,8 @@ def generate_presigned_url(
     unique_filename = f"{uuid.uuid4()}{extension}"
     
     upload_url = oss_manager.generate_presigned_upload_url(unique_filename, content_type=payload.content_type)
-    return {"upload_url": upload_url, "object_key": f"oss://{unique_filename}", "fallback_local": False}
+    prefix = "s3://" if oss_manager.backend == "s3" else "oss://"
+    return {"upload_url": upload_url, "object_key": f"{prefix}{unique_filename}", "fallback_local": False}
 
 @router.post("/confirm-upload", response_model=DatasetResponse)
 def confirm_upload(
@@ -423,7 +424,7 @@ async def import_url_dataset(
     if oss_manager.enabled:
         storage_url = oss_manager.upload_local_file(file_path, original_filename=filename)
         # Remove local file if uploaded to cloud storage to keep ephemeral disk clean
-        if storage_url.startswith("oss://") and os.path.exists(file_path):
+        if (storage_url.startswith("oss://") or storage_url.startswith("s3://")) and os.path.exists(file_path):
             try:
                 os.remove(file_path)
             except Exception:

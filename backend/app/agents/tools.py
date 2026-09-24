@@ -20,7 +20,7 @@ def get_dataset_context(dataset_id: str, db: Session) -> dict:
     dataset.last_accessed_at = func.now()
     db.commit()
     storage_url = dataset.storage_url
-    if storage_url and storage_url.startswith("oss://"):
+    if storage_url and (storage_url.startswith("oss://") or storage_url.startswith("s3://")):
         storage_url = oss_manager.generate_presigned_url(storage_url)
 
     result = {

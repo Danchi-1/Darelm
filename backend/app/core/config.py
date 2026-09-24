@@ -58,8 +58,6 @@ class Settings(BaseSettings):
         "qwen/qwen3.8-27b:free",
         "google/gemma-4-31b-it:free",
         "nvidia/nemotron-3-super-120b-a12b:free",
-        "google/gemma-4-26b-a4b-it:free",
-        "openrouter/free",
     ]
     E2B_API_KEY: Optional[str] = None
     

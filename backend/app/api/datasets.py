@@ -400,7 +400,7 @@ def _run_kaggle_import(
                 if found:
                     break
             if not found:
-                raise ValueError("No CSV or Excel files found in the extracted Kaggle dataset.")
+                raise ValueError("No CSV or Excel files found in this Kaggle dataset. It appears to contain images or non-tabular data. Darelm currently supports tabular datasets (.csv, .xlsx, .xls).")
 
         clean_filename = os.path.basename(downloaded_file_name)
         unique_filename = f"{uuid.uuid4()}-{clean_filename}"
@@ -509,6 +509,11 @@ async def import_url_dataset(
 
     # --- Standard public URL download (synchronous, fast) ---
     filename = os.path.basename(parsed.path)
+    if filename and filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.zip', '.tar', '.gz', '.mp4', '.pdf', '.svg')):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format ({filename}). Darelm currently supports tabular datasets (CSV and Excel)."
+        )
     if not filename or not filename.lower().endswith(('.csv', '.xlsx', '.xls')):
         filename = "imported_dataset.csv"
 

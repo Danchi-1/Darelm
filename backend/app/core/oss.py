@@ -70,6 +70,19 @@ class OSSManager:
                 buffer.write(data)
             return f"local://{local_path}"
 
+    def upload_local_file(self, file_path: str, original_filename: str = None) -> str:
+        """
+        Uploads a local file to Alibaba Cloud OSS and returns the oss:// URI.
+        Falls back to local:// if OSS is not enabled.
+        """
+        if self.enabled and os.path.exists(file_path):
+            ext = os.path.splitext(original_filename or file_path)[1]
+            unique_filename = f"{uuid.uuid4()}{ext}"
+            with open(file_path, "rb") as f:
+                self.bucket.put_object(unique_filename, f.read())
+            return f"oss://{unique_filename}"
+        return f"local://{file_path}"
+
     def generate_presigned_url(self, storage_url: str, expires_in_seconds: int = 900) -> str:
         """Generates a short-lived presigned URL for secure frontend download."""
         if storage_url.startswith("oss://") and self.enabled:

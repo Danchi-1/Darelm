@@ -419,18 +419,29 @@ async def import_url_dataset(
             
     # Save to DB
     size_bytes = os.path.getsize(file_path)
+    
+    if oss_manager.enabled:
+        storage_url = oss_manager.upload_local_file(file_path, original_filename=filename)
+        # Remove local file if uploaded to cloud storage to keep ephemeral disk clean
+        if storage_url.startswith("oss://") and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
+    else:
+        storage_url = f"local://{file_path}"
+        background_tasks.add_task(compress_dataset_background, storage_url)
+
     new_dataset = Dataset(
         user_id=current_user.id,
         name=filename,
         dataset_type=dataset_type,
         size_bytes=size_bytes,
-        storage_url=f"local://{file_path}"
+        storage_url=storage_url
     )
     
     db.add(new_dataset)
     db.commit()
     db.refresh(new_dataset)
-    
-    background_tasks.add_task(compress_dataset_background, new_dataset.storage_url)
     
     return new_dataset

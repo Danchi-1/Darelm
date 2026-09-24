@@ -117,7 +117,7 @@ export default function AutopilotFlow() {
           setSelectedDatasetId(data.dataset_id);
           setPlanData(data.plan);
           
-          if (data.status === 'completed' && data.report) {
+          if (data.report) {
             setReportData(data.report);
             setPhase('report');
             setIsExecuting(false);
@@ -126,9 +126,11 @@ export default function AutopilotFlow() {
               (data.created_at && data.updated_at ? Math.max(1, Math.round((new Date(data.updated_at) - new Date(data.created_at)) / 1000)) : 0);
             setElapsedSeconds(pastDuration);
             accumulatedSecondsRef.current = pastDuration;
-          } else if (data.status === 'executing') {
+          } else if (data.status === 'executing' || data.status === 'failed') {
             setPhase('execution');
-            setExecutingMessage('Session is currently executing or failed to finish cleanly.');
+            setExecutingMessage(data.status === 'failed'
+              ? 'Session was interrupted. Click Resume Execution to complete synthesis.'
+              : 'Session is currently executing or waiting to finish.');
 
             const elapsed = data.created_at 
               ? Math.max(0, Math.floor((Date.now() - new Date(data.created_at)) / 1000))
@@ -136,7 +138,7 @@ export default function AutopilotFlow() {
             setElapsedSeconds(elapsed);
             accumulatedSecondsRef.current = elapsed;
             startTimeRef.current = Date.now();
-            setIsExecuting(true);
+            setIsExecuting(data.status === 'executing');
             
             if (data.steps && data.steps.length > 0) {
               const completedIdxs = data.steps
@@ -271,11 +273,22 @@ export default function AutopilotFlow() {
           }
         }
       }
-    }).catch(err => {
+    }).catch(async (err) => {
       console.error(err);
       setIsExecuting(false);
-      addToast('Execution failed', 'error');
-      setPhase('planning');
+      setIsConfirming(false);
+      try {
+        const check = await api.autopilotGetSession(sessionId);
+        if (check?.report) {
+          setReportData(check.report);
+          setPhase('report');
+          addToast('Analysis completed successfully!', 'success');
+          return;
+        }
+      } catch (e) {}
+      addToast('Connection interrupted. Click Resume Execution to complete synthesis.', 'error');
+      setPhase('execution');
+      setExecutingMessage('Session was interrupted. Click Resume Execution to complete synthesis.');
     });
   };
 
@@ -400,7 +413,7 @@ export default function AutopilotFlow() {
         );
 
       case 'execution': {
-        const isPausedOrError = executingMessage.includes('failed to finish cleanly') || !isExecuting;
+        const isPausedOrError = executingMessage.includes('interrupted') || executingMessage.includes('failed') || !isExecuting;
         const percentComplete = steps.length > 0 ? Math.round((completedSteps.length / steps.length) * 100) : 0;
 
         return (

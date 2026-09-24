@@ -122,7 +122,6 @@ class AutopilotConfirmRequest(BaseModel):
 @router.post("/confirm")
 async def confirm_autopilot(
     request: AutopilotConfirmRequest,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     # We must fetch the session inside the endpoint, but yield a StreamingResponse
@@ -130,6 +129,7 @@ async def confirm_autopilot(
     
     session_id_str = request.session_id
     user_feedback_str = request.user_feedback
+    user_id = current_user.id
     
     async def executor_stream():
         from app.db.session import SessionLocal
@@ -137,7 +137,7 @@ async def confirm_autopilot(
         
         # 1. Fetch initial session data in a scoped transaction
         with SessionLocal() as db:
-            ap_session = db.query(AutopilotSession).filter(AutopilotSession.id == session_id_str, AutopilotSession.user_id == current_user.id).first()
+            ap_session = db.query(AutopilotSession).filter(AutopilotSession.id == session_id_str, AutopilotSession.user_id == user_id).first()
             if not ap_session:
                 yield f"data: {json.dumps({'error': 'Session not found'})}\n\n"
                 return
@@ -378,12 +378,16 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
                     
                     print(f"[EXECUTOR] Step {step_id} - Iteration {attempt}: Calling LLM...")
                     
-                    # Token Management: Aggressive History Compression
-                    if len(history) > 7:
-                        truncation_notice = {"role": "system", "content": f"[{len(history)-5} earlier reasoning steps were truncated to save context. Continue reasoning from the most recent observations below.]"}
-                        compressed_history = [history[0], truncation_notice] + history[-4:]
-                    else:
-                        compressed_history = history
+                    # Token Management: Compress long tool outputs in-place rather than
+                    # dropping history entries, so the agent retains what it computed.
+                    compressed_history = []
+                    for _i, _msg in enumerate(history):
+                        if _msg.get("role") == "tool" and isinstance(_msg.get("content"), str) and len(_msg["content"]) > 800:
+                            _compressed = _msg.copy()
+                            _compressed["content"] = _msg["content"][:600] + "\n...[output truncated for context efficiency]...\n" + _msg["content"][-200:]
+                            compressed_history.append(_compressed)
+                        else:
+                            compressed_history.append(_msg)
                         
                     try:
                         for retry_attempt in range(10):
@@ -492,15 +496,17 @@ DATASET SCHEMA: {json.dumps(dataset_context.get("schema", {}))}"""
                             })
                             # Do not break, let the loop retry
                         
-                # Save step to DB
+                # Save step to DB — mark as failed if the LLM never produced valid findings JSON
+                _step_status = "completed" if step_completed_json else "failed"
                 with SessionLocal() as db:
                     db_step = AutopilotStep(
                         session_id=session_id_str,
                         step_index=step_id,
                         title=step.get("title", ""),
                         description=step.get("description", ""),
-                        status="completed",
-                        findings_json=json.dumps(step_completed_json) if step_completed_json else "{}"
+                        status=_step_status,
+                        findings_json=json.dumps(step_completed_json) if step_completed_json else "{}",
+                        error="Step did not produce valid output after 15 attempts." if not step_completed_json else None
                     )
                     db.add(db_step)
                     db.commit()
@@ -596,7 +602,6 @@ COMPLETED FINDINGS:
             # It will naturally timeout according to the Sandbox timeout parameter (1800s)
             pass
 
-    db.commit() # Release DB connection back to the pool to prevent deadlock
     return StreamingResponse(
         executor_stream(),
         media_type="text/event-stream"

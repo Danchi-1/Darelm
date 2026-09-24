@@ -196,7 +196,12 @@ export default function ConversationalChat() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch from AI');
+        let errDetail = `Server error (${response.status})`;
+        try {
+          const errJson = await response.json();
+          if (errJson.detail) errDetail = errJson.detail;
+        } catch (_) {}
+        throw new Error(errDetail);
       }
 
       const reader = response.body.getReader();
@@ -319,11 +324,12 @@ export default function ConversationalChat() {
       }
     } catch (error) {
       console.error("Chat error:", error);
-      addToast('Failed to communicate with the server', 'error');
+      const msg = error.message || 'Failed to communicate with the server';
+      addToast(msg, 'error');
       setMessages((prev) => {
         const newMessages = [...prev];
-        if (newMessages[newMessages.length - 1].content === '') {
-           newMessages[newMessages.length - 1].content = "Sorry, I encountered an error communicating with the server.";
+        if (newMessages.length > 0 && newMessages[newMessages.length - 1].content === '') {
+           newMessages[newMessages.length - 1].content = `Sorry, an error occurred: ${msg}`;
         }
         return newMessages;
       });

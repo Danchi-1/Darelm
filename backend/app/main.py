@@ -23,11 +23,22 @@ import app.db.models
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Ensure all tables exist in database (e.g. data_cleaning_sessions)
+    # Ensure all tables and required columns exist in database
     try:
         Base.metadata.create_all(bind=engine)
     except Exception as e:
         print(f"[DB] Table creation check: {e}")
+
+    try:
+        import sqlalchemy as sa
+        with engine.begin() as conn:
+            conn.execute(sa.text("ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS sandbox_id VARCHAR;"))
+            conn.execute(sa.text("ALTER TABLE users ADD COLUMN IF NOT EXISTS kaggle_username VARCHAR;"))
+            conn.execute(sa.text("ALTER TABLE users ADD COLUMN IF NOT EXISTS kaggle_key VARCHAR;"))
+            conn.execute(sa.text("ALTER TABLE datasets ADD COLUMN IF NOT EXISTS last_accessed_at TIMESTAMP WITH TIME ZONE;"))
+            conn.execute(sa.text("ALTER TABLE ml_experiment_sessions ADD COLUMN IF NOT EXISTS model_url VARCHAR;"))
+    except Exception as e:
+        print(f"[DB] Column check: {e}")
 
     scheduler = start_scheduler()
     keep_alive_task = asyncio.create_task(start_keep_alive())

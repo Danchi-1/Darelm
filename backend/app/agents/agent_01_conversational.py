@@ -104,14 +104,22 @@ After your `<thought>` block, provide the final, polished, direct answer to the 
             return StreamingResponse(error_stream(), media_type="text/event-stream")
             
     # Handle Session Logic
+    import uuid
+    dataset_uuid = None
+    if request.dataset_id:
+        try:
+            dataset_uuid = uuid.UUID(str(request.dataset_id))
+        except (ValueError, TypeError):
+            dataset_uuid = None
+
     if request.session_id:
         session = db.query(ChatSession).filter(ChatSession.id == request.session_id, ChatSession.user_id == current_user.id).first()
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
             
         # Hot-swap dataset if the user changed it mid-session
-        if request.dataset_id and str(session.dataset_id) != str(request.dataset_id):
-            session.dataset_id = request.dataset_id
+        if dataset_uuid and session.dataset_id != dataset_uuid:
+            session.dataset_id = dataset_uuid
             db.commit()
     else:
         # Generate a short title from the first message
@@ -126,7 +134,7 @@ After your `<thought>` block, provide the final, polished, direct answer to the 
                 title = title[:50]
         except Exception:
             title = request.message[:50] + "..." if len(request.message) > 50 else request.message
-        session = ChatSession(user_id=current_user.id, dataset_id=request.dataset_id, title=title)
+        session = ChatSession(user_id=current_user.id, dataset_id=dataset_uuid, title=title)
         db.add(session)
         db.commit()
         db.refresh(session)
@@ -210,18 +218,22 @@ After your `<thought>` block, provide the final, polished, direct answer to the 
             fresh_db.close()
 
     async def chat_stream():
-        yield f"data: {json.dumps({'session_id': str(session.id)})}\n\n"
+        try:
+            yield f"data: {json.dumps({'session_id': str(session.id)})}\n\n"
 
-        async for chunk in llm_client.stream_chat(
-            prompt=request.message,
-            system_prompt=system_prompt,
-            dataset_context=dataset_context,
-            history=history,
-            on_complete=on_complete,
-            sandbox_id=current_sandbox_id,
-            on_sandbox_created=on_sandbox_created,
-        ):
-            yield chunk
+            async for chunk in llm_client.stream_chat(
+                prompt=request.message,
+                system_prompt=system_prompt,
+                dataset_context=dataset_context,
+                history=history,
+                on_complete=on_complete,
+                sandbox_id=current_sandbox_id,
+                on_sandbox_created=on_sandbox_created,
+            ):
+                yield chunk
+        except Exception as e:
+            print(f"[Agent 01 Stream] Error: {e}", flush=True)
+            yield f"data: {json.dumps({'error': f'Agent error: {str(e)}'})}\n\n"
 
     db.commit() # Release DB connection back to the pool to prevent timeout during long SSE stream
     return StreamingResponse(

@@ -12,7 +12,7 @@ from e2b_code_interpreter import Sandbox
 from app.api.deps import get_db, get_current_user
 from app.db.models import User, Dataset, DataCleaningSession
 from app.core.config import settings
-from app.core.qwen import qwen_client
+from app.core.llm import llm_client
 import re
 from app.agents.prompts_04 import SYSTEM_PROMPT
 from app.agents.tools import get_dataset_context
@@ -208,7 +208,7 @@ except Exception as e:
                 
                 max_steps = 10
                 for step in range(max_steps):
-                    response = await qwen_client.chat_completion(
+                    response = await llm_client.chat_completion(
                         messages=messages,
                         tools=tools,
                         tier="smart"

@@ -7,7 +7,7 @@ import json
 
 from app.api.deps import get_db, get_current_user
 from app.db.models import User, Dataset, ChatSession, ChatMessage
-from app.core.qwen import qwen_client
+from app.core.llm import llm_client
 
 router = APIRouter()
 
@@ -74,7 +74,7 @@ async def chat_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    system_prompt = """You are Darelm's Conversational Analyst — a precise, no-nonsense data intelligence agent powered by Qwen. Your job is to answer questions about the user's data accurately, efficiently, and honestly.
+    system_prompt = """You are Darelm's Conversational Analyst — a precise, no-nonsense data intelligence agent powered by Darelm AI. Your job is to answer questions about the user's data accurately, efficiently, and honestly.
 
 You operate in a strict Thought → Action → Observation → Thought loop. Never guess when you can compute.
 
@@ -117,7 +117,7 @@ After your `<thought>` block, provide the final, polished, direct answer to the 
         # Generate a short title from the first message
         title_prompt = f"Generate a concise 3 to 4 word title for this data analysis query: '{request.message}'. Do not use quotes, periods, or the word 'title'."
         try:
-            title_res = await qwen_client.chat_completion(
+            title_res = await llm_client.chat_completion(
                 messages=[{"role": "user", "content": title_prompt}],
                 tier="fast"
             )
@@ -198,7 +198,7 @@ After your `<thought>` block, provide the final, polished, direct answer to the 
     async def chat_stream():
         yield f"data: {json.dumps({'session_id': str(session.id)})}\n\n"
         
-        async for chunk in qwen_client.stream_chat(
+        async for chunk in llm_client.stream_chat(
             prompt=request.message, 
             system_prompt=system_prompt,
             dataset_context=dataset_context,

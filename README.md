@@ -136,7 +136,7 @@ graph TD
         A4[04. Data Cleaner]:::agents
     end
 
-    LLM[LLM Engine\nDashScope Qwen / OpenRouter API]:::llm
+    LLM[LLM Engine\nGroq / OpenRouter / DashScope]:::llm
     E2B[E2B Micro-VM Sandbox\nIsolated Python 3 Execution]:::sandbox
 
     DB[(PostgreSQL\nUsers • Sessions • Steps)]:::storage
@@ -173,7 +173,7 @@ Darelm offers flexible ingestion options to fit into existing enterprise workflo
 
 ### Hybrid Storage Architecture
 Darelm includes a unified storage abstraction:
-- **Production Cloud Storage:** Integrated with Alibaba Cloud OSS using Auth V4 signatures for high-durability object storage.
+- **Production Cloud Storage:** Integrated with S3-compatible object storage (AWS S3, Neon Object Storage, or Alibaba Cloud OSS) for high-durability file management.
 - **Zero-Config Local Fallback:** When cloud credentials are not supplied, Darelm automatically routes all file management to a local filesystem storage pool (`uploads/`) with no code changes required.
 
 ---
@@ -259,9 +259,10 @@ Darelm/
    SECRET_KEY=change-this-to-a-very-long-random-secret
    FERNET_KEY=your-generated-fernet-key
 
-   # AI LLM Provider (supply either QWEN_API_KEY or OPENROUTER_API_KEY)
-   QWEN_API_KEY=your_dashscope_api_key
+   # AI LLM Provider (supply one — Groq is recommended)
+   GROQ_API_KEY=your_groq_api_key
    # OPENROUTER_API_KEY=your_openrouter_api_key
+   # QWEN_API_KEY=your_dashscope_api_key
 
    # E2B Sandbox (for isolated code execution)
    E2B_API_KEY=your_e2b_api_key

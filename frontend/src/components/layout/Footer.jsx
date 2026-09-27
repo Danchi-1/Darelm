@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="text-center md:text-left">
           <h2 className="font-mono text-xl text-ink mb-2">Darelm</h2>
           <p className="text-sm text-muted">
-            Qwen-powered data intelligence platform
+            AI-powered data intelligence platform
           </p>
         </div>
         <div className="flex gap-8">

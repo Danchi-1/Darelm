@@ -84,7 +84,7 @@ export default function Register() {
               Darelm
             </Link>
             <p className="text-muted text-sm drop-shadow">
-              Qwen-powered data intelligence platform
+              AI-powered data intelligence platform
             </p>
           </div>
         </div>

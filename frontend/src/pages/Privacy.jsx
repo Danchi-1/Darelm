@@ -28,7 +28,7 @@ export default function Privacy() {
           <section>
             <h2 className="font-mono text-2xl text-ink mb-4">3. Third-Party Services</h2>
             <p>
-              We utilize third-party cloud infrastructure (like Alibaba Cloud and AWS) and isolated execution environments (like E2B). 
+              We utilize third-party cloud infrastructure and isolated execution environments (like E2B).
               While your data may be processed on these secure cloud providers, they are contractually obligated to maintain strict data confidentiality and security protocols.
             </p>
           </section>

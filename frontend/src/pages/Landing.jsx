@@ -291,16 +291,16 @@ function BentoGrid() {
             <p className="text-sm text-muted">High-resolution, publication-ready charts generated instantly based on your data's patterns, ready for inspection and download.</p>
           </div>
 
-          {/* Card 6: Qwen (Wide) */}
+          {/* Card 6: Secure Execution (Wide) */}
           <div className={`${cardClasses} md:col-span-3 top-[20vh] md:flex-row md:items-center md:justify-between gap-8 bg-gradient-to-r from-signal/10 to-surface/95 md:to-surface/40`}>
             <div>
-              <h3 className="font-mono text-2xl text-ink mb-2">Powered entirely by Qwen</h3>
-              <p className="text-muted max-w-xl">Leveraging Qwen-Plus for advanced reasoning, Qwen-Coder for precise execution, and Qwen-Max for complex ML tasks.</p>
+              <h3 className="font-mono text-2xl text-ink mb-2">Secure isolated execution</h3>
+              <p className="text-muted max-w-xl">Every analysis runs inside an ephemeral, firewalled micro-VM sandbox. Your data and AI-generated code never touch the host — fully isolated, every time.</p>
             </div>
             <div className="flex gap-4 mt-6 md:mt-0">
-              <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-signal font-mono text-xl animate-pulse">QP</div>
-              <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-signal font-mono text-xl animate-pulse delay-75">QC</div>
-              <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-signal font-mono text-xl animate-pulse delay-150">QM</div>
+              <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-signal font-mono text-xl animate-pulse">E2B</div>
+              <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-signal font-mono text-sm animate-pulse delay-75">VM</div>
+              <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-signal font-mono text-sm animate-pulse delay-150">🔒</div>
             </div>
           </div>
         </div>
